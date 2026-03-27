@@ -1,0 +1,44 @@
+{
+  "name": "ad-approval",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "test": "vitest run",
+    "lint": "eslint",
+    "typeorm": "ts-node --project tsconfig-cli.json ./node_modules/typeorm/cli.js",
+    "migration:generate": "npm run typeorm -- migration:generate ./migrations/$npm_config_name -d data-source.ts",
+    "migration:run": "npm run typeorm -- migration:run -d data-source.ts",
+    "migration:revert": "npm run typeorm -- migration:revert -d data-source.ts",
+    "db:sync": "npm run typeorm -- schema:sync -d data-source.ts",
+    "db:seed": "ts-node --project tsconfig-cli.json scripts/seed.ts"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^12.8.0",
+    "jose": "^6.2.2",
+    "next": "16.2.1",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "reflect-metadata": "^0.2.2",
+    "typeorm": "^0.3.28",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.1",
+    "tailwindcss": "^4",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^5",
+    "vitest": "^4.1.0"
+  }
+}
