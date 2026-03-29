@@ -33,6 +33,13 @@ export const reviewSchema = z.object({
 
 export const createModeratorSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(8, '비밀번호는 8자 이상'),
   name: z.string().min(1).max(50),
+})
+
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, '현재 비밀번호를 입력해주세요'),
+  newPassword: z.string().min(8, '새 비밀번호는 8자 이상').max(100),
+}).refine((value) => value.currentPassword !== value.newPassword, {
+  message: '새 비밀번호는 현재 비밀번호와 달라야 합니다',
+  path: ['newPassword'],
 })

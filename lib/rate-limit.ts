@@ -6,6 +6,7 @@ const presets = {
   verify: { windowMs: 60 * 1000, maxRequests: 30 },
   public_lookup_contact: { windowMs: 60 * 1000, maxRequests: 5 },
   admin_lookup_read: { windowMs: 60 * 1000, maxRequests: 15 },
+  password_change: { windowMs: 10 * 60 * 1000, maxRequests: 5 },
 } as const
 
 const store = new Map<string, number[]>()

@@ -3,6 +3,7 @@ import { getUserRepo, getDb } from '@/lib/db'
 import { createModeratorSchema } from '@/lib/validations'
 import { hashPassword } from '@/lib/auth'
 import { getActorFromHeaders } from '@/lib/request-actor'
+import { generateTemporaryPassword } from '@/lib/password'
 
 export async function GET(request: NextRequest) {
   try {
@@ -61,7 +62,8 @@ export async function POST(request: NextRequest) {
 
     const userId = actor.userId
     const userName = actor.name
-    const passwordHash = await hashPassword(parsed.data.password)
+    const temporaryPassword = generateTemporaryPassword()
+    const passwordHash = await hashPassword(temporaryPassword)
 
     let newUser: any
     const db = await getDb()
@@ -86,7 +88,13 @@ export async function POST(request: NextRequest) {
     })
 
     return NextResponse.json(
-      { id: newUser.id, email: newUser.email, name: newUser.name, role: newUser.role },
+      {
+        id: newUser.id,
+        email: newUser.email,
+        name: newUser.name,
+        role: newUser.role,
+        temporaryPassword,
+      },
       { status: 201 }
     )
   } catch (error) {

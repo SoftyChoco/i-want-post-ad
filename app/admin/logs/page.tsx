@@ -11,6 +11,8 @@ const actionBadge: Record<string, { label: string; color: string }> = {
   rejudge: { label: '재판정', color: 'bg-sky-100 text-sky-800' },
   create_mod: { label: '부방장 추가', color: 'bg-blue-100 text-blue-800' },
   delete_mod: { label: '부방장 삭제', color: 'bg-gray-100 text-gray-600' },
+  reset_mod_password: { label: '부방장 비밀번호 초기화', color: 'bg-orange-100 text-orange-800' },
+  change_password: { label: '비밀번호 변경', color: 'bg-violet-100 text-violet-800' },
 }
 
 export default async function LogsPage({

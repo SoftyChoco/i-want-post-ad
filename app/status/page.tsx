@@ -87,6 +87,44 @@ function StatusContent() {
         </button>
       </div>
 
+      <section className="mb-6 space-y-3 text-sm">
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-900">
+          <h2 className="font-semibold mb-2">조회 전 필수 안내</h2>
+          <ul className="space-y-2">
+            <li className="flex items-start gap-2">
+              <span className="mt-0.5 inline-flex px-1.5 py-0.5 rounded text-[11px] font-semibold bg-amber-200 text-amber-900">주의</span>
+              <span>AI가 <strong>정책 부합</strong>이어도 운영진의 <strong>최종 승인 전에는 게시하면 안 됩니다</strong>.</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="mt-0.5 inline-flex px-1.5 py-0.5 rounded text-[11px] font-semibold bg-amber-200 text-amber-900">시간</span>
+              <span>승인된 요청코드는 승인 시점 기준 <strong>24시간</strong> 이후 만료됩니다.</span>
+            </li>
+          </ul>
+        </div>
+
+        <div className="rounded-lg border border-rose-200 bg-rose-50 p-4 text-rose-900">
+          <h3 className="font-medium mb-2">제재 가능 사유</h3>
+          <ul className="space-y-2">
+            <li className="flex items-start gap-2">
+              <span className="mt-0.5 inline-flex px-1.5 py-0.5 rounded text-[11px] font-semibold bg-rose-200 text-rose-900">제재</span>
+              <span>홍보 내용 상단에 <strong>요청코드 미기입</strong></span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="mt-0.5 inline-flex px-1.5 py-0.5 rounded text-[11px] font-semibold bg-rose-200 text-rose-900">제재</span>
+              <span>정책 통과 후에도 <strong>운영상 위험 요소</strong>가 확인됨</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="mt-0.5 inline-flex px-1.5 py-0.5 rounded text-[11px] font-semibold bg-rose-200 text-rose-900">제재</span>
+              <span>동일 요청코드로 <strong>반복 광고</strong> 진행</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="mt-0.5 inline-flex px-1.5 py-0.5 rounded text-[11px] font-semibold bg-rose-200 text-rose-900">제재</span>
+              <span>광고 신청 정보 <strong>불성실 작성</strong></span>
+            </li>
+          </ul>
+        </div>
+      </section>
+
       {loading && (
         <div className="text-center py-12 text-gray-500">조회 중입니다...</div>
       )}
@@ -166,7 +204,16 @@ function StatusContent() {
                 )}
               </div>
 
-              <div className="mt-4 p-3 bg-blue-50 border border-blue-100 rounded text-sm">
+              {item.status === 'pending' && (
+                <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded text-sm">
+                  <div className="text-amber-900 font-bold mb-1">관리자 최종 검토중</div>
+                  <div className="text-amber-800">
+                    AI 결과와 별개로 최종 승인 전에는 게시할 수 없습니다.
+                  </div>
+                </div>
+              )}
+
+              <div className="mt-3 p-3 bg-blue-50 border border-blue-100 rounded text-sm">
                 <div className="text-blue-800 font-bold mb-1">AI 자동 판정</div>
                 <div className="text-blue-700 mb-1">
                   {item.llmStatus === 'processing' && '판정 진행중 (최대 1분 내 반영)'}

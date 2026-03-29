@@ -50,19 +50,17 @@ describe('reviewSchema', () => {
 })
 
 describe('createModeratorSchema', () => {
-  it('enforces password length', () => {
+  it('accepts email and name without password input', () => {
     expect(
       createModeratorSchema.safeParse({
         email: 'mod@example.com',
-        password: '12345678',
         name: 'mod',
       }).success
     ).toBe(true)
 
     expect(
       createModeratorSchema.safeParse({
-        email: 'mod@example.com',
-        password: '1234',
+        email: 'not-email',
         name: 'mod',
       }).success
     ).toBe(false)

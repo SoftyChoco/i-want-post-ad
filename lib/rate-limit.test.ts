@@ -63,6 +63,19 @@ describe('checkRateLimit', () => {
     expect(blocked.retryAfterMs).toBeGreaterThan(0)
     expect(blocked.retryAfterMs).toBeLessThanOrEqual(5 * 60 * 1000)
   })
+
+  it('limits password changes to 5 per 10 minutes', () => {
+    const key = 'password-change-user-a'
+
+    for (let i = 0; i < 5; i += 1) {
+      expect(checkRateLimit(key, 'password_change')).toEqual({ allowed: true })
+    }
+
+    const blocked = checkRateLimit(key, 'password_change')
+    expect(blocked.allowed).toBe(false)
+    expect(blocked.retryAfterMs).toBeGreaterThan(0)
+    expect(blocked.retryAfterMs).toBeLessThanOrEqual(10 * 60 * 1000)
+  })
 })
 
 describe('getClientIp', () => {

@@ -23,6 +23,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               {(user?.role === 'admin' || user?.role === 'moderator') && (
                 <Link href="/admin/logs" className="text-sm font-medium text-gray-600 hover:text-blue-600">감사 로그</Link>
               )}
+              {(user?.role === 'admin' || user?.role === 'moderator') && (
+                <Link href="/admin/password" className="text-sm font-medium text-gray-600 hover:text-blue-600">비밀번호 변경</Link>
+              )}
             </div>
             <Link href="/" className="text-xs text-gray-400 hover:text-gray-600">홈</Link>
           </div>

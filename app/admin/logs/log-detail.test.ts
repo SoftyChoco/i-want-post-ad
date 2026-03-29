@@ -7,6 +7,7 @@ describe('formatAuditDetail', () => {
       '닉네임: 닉네임A'
     )
     expect(formatAuditDetail('delete_mod', JSON.stringify({ name: '닉네임B' }))).toBe('닉네임: 닉네임B')
+    expect(formatAuditDetail('reset_mod_password', JSON.stringify({ name: '닉네임C' }))).toBe('닉네임: 닉네임C')
   })
 
   it('formats rejudge action without exposing sensitive detail', () => {
@@ -19,6 +20,10 @@ describe('formatAuditDetail', () => {
     expect(formatAuditDetail('approve', JSON.stringify({ reason: '문의: user@example.com' }))).toBe(
       '문의: [이메일 비공개]'
     )
+  })
+
+  it('hides details for password change logs', () => {
+    expect(formatAuditDetail('change_password', JSON.stringify({ reason: 'ignored' }))).toBe('')
   })
 
   it('handles invalid JSON safely', () => {

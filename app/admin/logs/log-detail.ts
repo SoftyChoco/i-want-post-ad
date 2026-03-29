@@ -28,7 +28,7 @@ export function formatAuditDetail(action: string, details: string | null): strin
     return sanitizeSensitiveText(details)
   }
 
-  if (action === 'create_mod' || action === 'delete_mod') {
+  if (action === 'create_mod' || action === 'delete_mod' || action === 'reset_mod_password') {
     if (parsed.name) return `닉네임: ${sanitizeSensitiveText(parsed.name)}`
     return ''
   }
@@ -38,6 +38,10 @@ export function formatAuditDetail(action: string, details: string | null): strin
     const stage = stageLabel(parsed.stage)
     if (code) return `요청코드: ${code} (${stage})`
     return `재판정 ${stage}`
+  }
+
+  if (action === 'change_password') {
+    return ''
   }
 
   if (parsed.reason) return sanitizeSensitiveText(parsed.reason)
