@@ -1,13 +1,24 @@
 export function encodeActorNameHeaderValue(name: string): string {
-  return encodeURIComponent(name)
+  return Buffer.from(name, 'utf8').toString('base64url')
 }
 
 export function decodeActorNameHeaderValue(value: string | null): string {
   if (!value) return ''
+  if (value.includes('%')) {
+    try {
+      return decodeURIComponent(value)
+    } catch {
+      return value
+    }
+  }
   try {
-    return decodeURIComponent(value)
+    return Buffer.from(value, 'base64url').toString('utf8')
   } catch {
-    return value
+    try {
+      return decodeURIComponent(value)
+    } catch {
+      return value
+    }
   }
 }
 
