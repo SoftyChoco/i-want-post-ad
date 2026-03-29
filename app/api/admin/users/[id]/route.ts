@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserRepo, getDb } from '@/lib/db'
+import { getActorFromHeaders } from '@/lib/request-actor'
 
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const role = request.headers.get('x-user-role')
+    const actor = getActorFromHeaders(request.headers)
+    const role = actor.role
     if (role !== 'admin') {
       return NextResponse.json(
         { error: { code: 'FORBIDDEN', message: '방장만 부방장을 삭제할 수 있습니다' } },
@@ -16,7 +18,7 @@ export async function DELETE(
 
     const { id } = await params
     const targetId = Number(id)
-    const actorId = Number(request.headers.get('x-user-id'))
+    const actorId = actor.userId
 
     if (targetId === actorId) {
       return NextResponse.json(
@@ -42,7 +44,7 @@ export async function DELETE(
       )
     }
 
-    const userName = request.headers.get('x-user-name') || ''
+    const userName = actor.name
 
     const db = await getDb()
     await db.transaction(async (manager) => {

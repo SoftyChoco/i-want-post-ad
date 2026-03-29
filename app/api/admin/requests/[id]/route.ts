@@ -3,6 +3,7 @@ import { getAdRequestRepo, getDb } from '@/lib/db'
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
 import { reviewSchema } from '@/lib/validations'
 import { getRequestCodeExpiryAt, isRequestCodeExpired } from '@/lib/request-code-expiry'
+import { getActorFromHeaders } from '@/lib/request-actor'
 
 function stripUser(user: any) {
   if (!user) return null
@@ -68,8 +69,9 @@ export async function PATCH(
       )
     }
 
-    const userId = Number(request.headers.get('x-user-id'))
-    const userName = request.headers.get('x-user-name') || ''
+    const actor = getActorFromHeaders(request.headers)
+    const userId = actor.userId
+    const userName = actor.name
 
     const repo = await getAdRequestRepo()
     const adRequest = await repo.findOne({

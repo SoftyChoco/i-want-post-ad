@@ -117,4 +117,19 @@ describe('proxy behavior', () => {
     expect(response.headers.get('location')).toBe('http://localhost:3000/admin')
   })
 
+  it('allows admin route when token name is non-ascii', async () => {
+    jwtVerifyMock.mockResolvedValue({ payload: { userId: 2, role: 'moderator', name: '부방장' } })
+    const request = new NextRequest('http://localhost:3000/admin', {
+      headers: {
+        host: 'localhost:3000',
+        origin: 'http://localhost:3000',
+      },
+    })
+    request.cookies.set('session', 'valid-token')
+
+    const response = await proxy(request)
+
+    expect(response.status).toBe(200)
+  })
+
 })

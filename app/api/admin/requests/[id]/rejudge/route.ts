@@ -4,6 +4,7 @@ import { getAdRequestRepo, getDb } from '@/lib/db'
 import { judgeAdContent } from '@/lib/llm'
 import { recoverStaleLlmProcessing } from '@/lib/llm-status'
 import { getPolicyVersion } from '@/lib/policy'
+import { getActorFromHeaders } from '@/lib/request-actor'
 
 const REJUDGE_PROCESSING_MESSAGE = '재판정 진행중입니다. 최대 1분 내 결과가 반영됩니다.'
 
@@ -101,7 +102,8 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const role = request.headers.get('x-user-role')
+    const actor = getActorFromHeaders(request.headers)
+    const role = actor.role
     if (role !== 'admin') {
       return NextResponse.json(
         { error: { code: 'FORBIDDEN', message: '방장만 재판정을 실행할 수 있습니다' } },
@@ -109,8 +111,8 @@ export async function POST(
       )
     }
 
-    const userId = Number(request.headers.get('x-user-id'))
-    const userName = request.headers.get('x-user-name') || ''
+    const userId = actor.userId
+    const userName = actor.name
     const { id } = await params
 
     await recoverStaleLlmProcessing()

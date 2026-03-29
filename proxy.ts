@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server'
 import { jwtVerify } from 'jose'
 import { isSameOriginUiRequestFromHeaders } from '@/lib/api-origin-guard'
 import { getJwtSecretBytes } from '@/lib/env'
+import { encodeActorNameHeaderValue } from '@/lib/request-actor'
 
 function isSameOriginUiRequest(request: NextRequest): boolean {
   return isSameOriginUiRequestFromHeaders({
@@ -64,7 +65,7 @@ export async function proxy(request: NextRequest) {
       const requestHeaders = new Headers(request.headers)
       requestHeaders.set('x-user-id', String(payload.userId))
       requestHeaders.set('x-user-role', String(payload.role))
-      requestHeaders.set('x-user-name', String(payload.name))
+      requestHeaders.set('x-user-name', encodeActorNameHeaderValue(String(payload.name)))
 
       return NextResponse.next({ request: { headers: requestHeaders } })
     } catch {

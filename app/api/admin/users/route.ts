@@ -2,10 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getUserRepo, getDb } from '@/lib/db'
 import { createModeratorSchema } from '@/lib/validations'
 import { hashPassword } from '@/lib/auth'
+import { getActorFromHeaders } from '@/lib/request-actor'
 
 export async function GET(request: NextRequest) {
   try {
-    const role = request.headers.get('x-user-role')
+    const actor = getActorFromHeaders(request.headers)
+    const role = actor.role
     if (role !== 'admin') {
       return NextResponse.json(
         { error: { code: 'FORBIDDEN', message: '방장만 부방장 목록을 볼 수 있습니다' } },
@@ -30,7 +32,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const role = request.headers.get('x-user-role')
+    const actor = getActorFromHeaders(request.headers)
+    const role = actor.role
     if (role !== 'admin') {
       return NextResponse.json(
         { error: { code: 'FORBIDDEN', message: '방장만 부방장을 추가할 수 있습니다' } },
@@ -56,8 +59,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const userId = Number(request.headers.get('x-user-id'))
-    const userName = request.headers.get('x-user-name') || ''
+    const userId = actor.userId
+    const userName = actor.name
     const passwordHash = await hashPassword(parsed.data.password)
 
     let newUser: any
