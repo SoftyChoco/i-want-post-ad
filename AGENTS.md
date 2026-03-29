@@ -76,4 +76,14 @@ Build on these rules unless the product owner explicitly changes direction.
 - Add rate-limit coverage to remaining admin read-heavy routes (`/api/admin/logs` first).
 - Add a small maintenance task for legacy audit-log detail cleanup (historical email removal in DB).
 - Keep Next.js deprecation watch active (proxy/doc changes in future Next versions).
+
+## 9) Complexity Control for Request Identity Context
+
+- Treat proxy-injected actor context (`x-user-id`, `x-user-role`, `x-user-name`) as a single contract, not per-route custom parsing.
+- Do not read or decode actor headers inline in routes; use shared helpers in `lib/request-actor.ts`.
+- Keep header value safety centralized:
+  - Encode non-ASCII user-facing values (like names) before putting them in headers at the proxy boundary.
+  - Decode only in the shared helper, never ad-hoc in route files.
+- When adding new admin/internal routes that need actor info, consume the same helper API instead of duplicating header logic.
+- If actor context contract changes, update proxy + shared helper + affected tests together in one PR to avoid partial breakage.
 <!-- END:project-development-guardrails -->
