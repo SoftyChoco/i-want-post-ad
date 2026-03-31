@@ -2,13 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAdRequestRepo } from '@/lib/db'
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
 import { isRequestCodeExpired } from '@/lib/request-code-expiry'
+import { hasValidExternalApiToken } from '@/lib/external-api-token'
 
 export async function GET(request: NextRequest) {
-  const botToken = process.env.KAKAO_BOT_TOKEN
-  const authHeader = request.headers.get('authorization') || ''
-  const isBotRequest = Boolean(botToken) && authHeader === `Bearer ${botToken}`
+  const isExternalTokenRequest = hasValidExternalApiToken(request.headers.get('authorization'))
 
-  if (!isBotRequest) {
+  if (!isExternalTokenRequest) {
     const ip = getClientIp(request)
     const rl = checkRateLimit(ip, 'verify')
     if (!rl.allowed) {
@@ -34,7 +33,7 @@ export async function GET(request: NextRequest) {
       relations: ['reviewedBy'],
     })
 
-    if (isBotRequest) {
+    if (isExternalTokenRequest) {
       if (!adRequest) {
         return NextResponse.json({
           status: 'not_found',

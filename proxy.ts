@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server'
 import { jwtVerify } from 'jose'
 import { isSameOriginUiRequestFromHeaders } from '@/lib/api-origin-guard'
 import { getJwtSecretBytes } from '@/lib/env'
+import { hasValidExternalApiToken } from '@/lib/external-api-token'
 import { encodeActorNameHeaderValue } from '@/lib/request-actor'
 
 function isSameOriginUiRequest(request: NextRequest): boolean {
@@ -32,18 +33,17 @@ export async function proxy(request: NextRequest) {
   const isApiRoute = pathname.startsWith('/api/admin')
   const isInternalMaintenanceApi = pathname.startsWith('/api/internal/maintenance')
   const isVerifyApi = pathname === '/api/verify'
+  const isRequestsSummaryApi = pathname === '/api/requests/summary'
   const isHealthApi = pathname.startsWith('/api/health')
   const isAdminPage = pathname.startsWith('/admin')
   const isLoginPage = pathname === '/login'
-  const botToken = process.env.KAKAO_BOT_TOKEN
-  const authHeader = request.headers.get('authorization') || ''
-  const hasValidBotToken = Boolean(botToken) && authHeader === `Bearer ${botToken}`
+  const hasValidExternalToken = hasValidExternalApiToken(request.headers.get('authorization'))
 
   if (
     isAnyApiRoute &&
     !isInternalMaintenanceApi &&
     !isHealthApi &&
-    !(isVerifyApi && hasValidBotToken) &&
+    !((isVerifyApi || isRequestsSummaryApi) && hasValidExternalToken) &&
     !isSameOriginUiRequest(request)
   ) {
     return NextResponse.json(

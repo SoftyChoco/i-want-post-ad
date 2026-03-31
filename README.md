@@ -192,6 +192,7 @@ npm run start
 |--------|------|------|------|
 | POST | `/api/ads/submit` | - | 광고 제출 + AI 판정 (rate limited) |
 | GET | `/api/verify?code=REQ-...` | - | 요청코드 개별 검증 (rate limited) |
+| GET | `/api/requests/summary` | Bearer External Token | 요청 상태 요약 (`hasPending`, `pendingCount`, `statusCounts`) |
 | GET | `/api/requests/by-contact?contact=...` | - | 연락처 기반 신청 내역 조회 (rate limited) |
 
 ### 관리자
@@ -373,7 +374,8 @@ server {
 | `GEMINI_API_KEY` | O | Google Gemini API 키. AI 판정 기능에 필요 |
 | `ADMIN_EMAIL` | O | 초기 관리자(방장) 계정 이메일. `db:seed` 실행 시 사용 |
 | `ADMIN_PASSWORD` | O | 초기 관리자(방장) 계정 비밀번호. `db:seed` 실행 시 사용 |
-| `KAKAO_BOT_TOKEN` | X | 카카오봇 요청코드 검증용 `/api/verify` Bearer 토큰 (봇 요청 rate-limit 면제) |
+| `EXTERNAL_API_TOKEN` | X | 외부 연동용 Bearer 토큰 (`/api/verify`, `/api/requests/summary`) |
+| `KAKAO_BOT_TOKEN` | X | 하위호환 토큰(미설정 시 `EXTERNAL_API_TOKEN` 우선, 없으면 fallback) |
 
 ---
 

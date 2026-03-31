@@ -61,13 +61,14 @@ describe('proxy matcher', () => {
 describe('proxy behavior', () => {
   beforeEach(() => {
     process.env.JWT_SECRET = '01234567890123456789012345678901'
-    process.env.KAKAO_BOT_TOKEN = 'bot-token'
+    process.env.EXTERNAL_API_TOKEN = 'external-token'
+    delete process.env.KAKAO_BOT_TOKEN
     jwtVerifyMock.mockReset()
   })
 
   afterEach(() => {
     delete process.env.JWT_SECRET
-    delete process.env.KAKAO_BOT_TOKEN
+    delete process.env.EXTERNAL_API_TOKEN
   })
 
   it('blocks direct api calls without same-origin headers', async () => {
@@ -93,11 +94,11 @@ describe('proxy behavior', () => {
     expect(response.status).toBe(200)
   })
 
-  it('allows direct /api/verify when bot token is valid', async () => {
+  it('allows direct /api/verify when external token is valid', async () => {
     const request = new NextRequest('http://localhost:3000/api/verify?requestCode=REQ-20260329-ABCD', {
       headers: {
         host: 'localhost:3000',
-        authorization: 'Bearer bot-token',
+        authorization: 'Bearer external-token',
       },
     })
 
@@ -106,8 +107,31 @@ describe('proxy behavior', () => {
     expect(response.status).toBe(200)
   })
 
-  it('still blocks direct /api/verify without bot token', async () => {
+  it('still blocks direct /api/verify without external token', async () => {
     const request = new NextRequest('http://localhost:3000/api/verify?requestCode=REQ-20260329-ABCD', {
+      headers: { host: 'localhost:3000' },
+    })
+
+    const response = await proxy(request)
+
+    expect(response.status).toBe(403)
+  })
+
+  it('allows direct /api/requests/summary when external token is valid', async () => {
+    const request = new NextRequest('http://localhost:3000/api/requests/summary', {
+      headers: {
+        host: 'localhost:3000',
+        authorization: 'Bearer external-token',
+      },
+    })
+
+    const response = await proxy(request)
+
+    expect(response.status).toBe(200)
+  })
+
+  it('still blocks direct /api/requests/summary without external token', async () => {
+    const request = new NextRequest('http://localhost:3000/api/requests/summary', {
       headers: { host: 'localhost:3000' },
     })
 
