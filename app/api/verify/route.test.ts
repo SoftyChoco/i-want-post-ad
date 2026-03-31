@@ -20,6 +20,9 @@ import { GET } from '@/app/api/verify/route'
 
 describe('GET /api/verify', () => {
   beforeEach(() => {
+    process.env.KAKAO_BOT_TOKEN = 'bot-token'
+    checkRateLimitMock.mockReset()
+    getClientIpMock.mockReset()
     getClientIpMock.mockReturnValue('127.0.0.1')
     checkRateLimitMock.mockReturnValue({ allowed: true })
     getAdRequestRepoMock.mockReset()
@@ -28,6 +31,7 @@ describe('GET /api/verify', () => {
   })
 
   afterEach(() => {
+    delete process.env.KAKAO_BOT_TOKEN
     vi.useRealTimers()
   })
 
@@ -72,5 +76,79 @@ describe('GET /api/verify', () => {
     expect(response.status).toBe(200)
     expect(body.valid).toBe(true)
     expect(body.requestCode).toBe('REQ-20260327-ABCD')
+  })
+
+  it('bypasses rate limit when valid bot token is provided', async () => {
+    checkRateLimitMock.mockReturnValue({ allowed: false, retryAfterMs: 5000 })
+    const findOneMock = vi.fn().mockResolvedValue({
+      requestCode: 'REQ-20260327-ABCD',
+      status: 'approved',
+      reviewedAt: new Date('2026-03-27T20:30:00.000Z'),
+      reviewedBy: { name: 'Admin' },
+      contentTitle: 't',
+      contentType: '교육/강의',
+    })
+    getAdRequestRepoMock.mockResolvedValue({ findOne: findOneMock })
+
+    const request = new NextRequest('http://localhost:3000/api/verify?requestCode=REQ-20260327-ABCD', {
+      headers: { authorization: 'Bearer bot-token' },
+    })
+    const response = await GET(request)
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({
+      status: 'approved',
+      expired: false,
+      reviewedAt: '2026-03-27T20:30:00.000Z',
+    })
+    expect(checkRateLimitMock).not.toHaveBeenCalled()
+  })
+
+  it('returns pending status for unreviewed request when token is valid', async () => {
+    const findOneMock = vi.fn().mockResolvedValue({
+      requestCode: 'REQ-20260327-ABCD',
+      status: 'pending',
+      reviewedAt: null,
+      reviewedBy: null,
+      contentTitle: 't',
+      contentType: '교육/강의',
+    })
+    getAdRequestRepoMock.mockResolvedValue({ findOne: findOneMock })
+
+    const request = new NextRequest('http://localhost:3000/api/verify?requestCode=REQ-20260327-ABCD', {
+      headers: { authorization: 'Bearer bot-token' },
+    })
+    const response = await GET(request)
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({
+      status: 'pending',
+      expired: false,
+      reviewedAt: null,
+    })
+  })
+
+  it('returns rejected status when request was rejected', async () => {
+    const findOneMock = vi.fn().mockResolvedValue({
+      requestCode: 'REQ-20260327-ABCD',
+      status: 'rejected',
+      reviewedAt: new Date('2026-03-27T19:00:00.000Z'),
+      reviewedBy: { name: 'Admin' },
+      contentTitle: 't',
+      contentType: '교육/강의',
+    })
+    getAdRequestRepoMock.mockResolvedValue({ findOne: findOneMock })
+
+    const request = new NextRequest('http://localhost:3000/api/verify?requestCode=REQ-20260327-ABCD', {
+      headers: { authorization: 'Bearer bot-token' },
+    })
+    const response = await GET(request)
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({
+      status: 'rejected',
+      expired: false,
+      reviewedAt: '2026-03-27T19:00:00.000Z',
+    })
   })
 })

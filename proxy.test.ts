@@ -61,11 +61,13 @@ describe('proxy matcher', () => {
 describe('proxy behavior', () => {
   beforeEach(() => {
     process.env.JWT_SECRET = '01234567890123456789012345678901'
+    process.env.KAKAO_BOT_TOKEN = 'bot-token'
     jwtVerifyMock.mockReset()
   })
 
   afterEach(() => {
     delete process.env.JWT_SECRET
+    delete process.env.KAKAO_BOT_TOKEN
   })
 
   it('blocks direct api calls without same-origin headers', async () => {
@@ -89,6 +91,29 @@ describe('proxy behavior', () => {
     const response = await proxy(request)
 
     expect(response.status).toBe(200)
+  })
+
+  it('allows direct /api/verify when bot token is valid', async () => {
+    const request = new NextRequest('http://localhost:3000/api/verify?requestCode=REQ-20260329-ABCD', {
+      headers: {
+        host: 'localhost:3000',
+        authorization: 'Bearer bot-token',
+      },
+    })
+
+    const response = await proxy(request)
+
+    expect(response.status).toBe(200)
+  })
+
+  it('still blocks direct /api/verify without bot token', async () => {
+    const request = new NextRequest('http://localhost:3000/api/verify?requestCode=REQ-20260329-ABCD', {
+      headers: { host: 'localhost:3000' },
+    })
+
+    const response = await proxy(request)
+
+    expect(response.status).toBe(403)
   })
 
   it('allows health path through origin guard', async () => {

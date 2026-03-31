@@ -31,11 +31,21 @@ export async function proxy(request: NextRequest) {
   const isAnyApiRoute = pathname.startsWith('/api/')
   const isApiRoute = pathname.startsWith('/api/admin')
   const isInternalMaintenanceApi = pathname.startsWith('/api/internal/maintenance')
+  const isVerifyApi = pathname === '/api/verify'
   const isHealthApi = pathname.startsWith('/api/health')
   const isAdminPage = pathname.startsWith('/admin')
   const isLoginPage = pathname === '/login'
+  const botToken = process.env.KAKAO_BOT_TOKEN
+  const authHeader = request.headers.get('authorization') || ''
+  const hasValidBotToken = Boolean(botToken) && authHeader === `Bearer ${botToken}`
 
-  if (isAnyApiRoute && !isInternalMaintenanceApi && !isHealthApi && !isSameOriginUiRequest(request)) {
+  if (
+    isAnyApiRoute &&
+    !isInternalMaintenanceApi &&
+    !isHealthApi &&
+    !(isVerifyApi && hasValidBotToken) &&
+    !isSameOriginUiRequest(request)
+  ) {
     return NextResponse.json(
       { error: { code: 'DIRECT_API_BLOCKED', message: '직접 API 호출은 허용되지 않습니다' } },
       { status: 403 }

@@ -49,7 +49,7 @@ export class AdRequest {
   policyVersion!: string | null;
 
   @Column({ type: 'varchar', default: 'pending' })
-  status!: string;  // 'pending'|'approved'|'rejected'|'withdrawn'
+  status!: string;
 
   @Column({ type: 'text', nullable: true, name: 'admin_reason' })
   adminReason!: string | null;

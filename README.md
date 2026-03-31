@@ -373,6 +373,7 @@ server {
 | `GEMINI_API_KEY` | O | Google Gemini API 키. AI 판정 기능에 필요 |
 | `ADMIN_EMAIL` | O | 초기 관리자(방장) 계정 이메일. `db:seed` 실행 시 사용 |
 | `ADMIN_PASSWORD` | O | 초기 관리자(방장) 계정 비밀번호. `db:seed` 실행 시 사용 |
+| `KAKAO_BOT_TOKEN` | X | 카카오봇 요청코드 검증용 `/api/verify` Bearer 토큰 (봇 요청 rate-limit 면제) |
 
 ---
 
