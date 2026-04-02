@@ -84,8 +84,8 @@ describe('POST /api/admin/password', () => {
     const userRepoTx = { update: vi.fn().mockResolvedValue(undefined) }
     const auditRepoTx = { create: vi.fn((value) => value) }
     const manager = {
-      getRepository: vi.fn((name: string) => {
-        if (name === 'User') return userRepoTx
+      getRepository: vi.fn((target: string | { name?: string }) => {
+        if (target === 'User' || (typeof target !== 'string' && target.name === 'User')) return userRepoTx
         return auditRepoTx
       }),
       save: vi.fn().mockResolvedValue(undefined),
@@ -103,7 +103,7 @@ describe('POST /api/admin/password', () => {
     await expect(response.json()).resolves.toMatchObject({ success: true })
     expect(userRepoTx.update).toHaveBeenCalledWith({ id: 2 }, { passwordHash: 'new-hash' })
     expect(manager.save).toHaveBeenCalledWith(
-      'AuditLog',
+      expect.objectContaining({ name: 'AuditLog' }),
       expect.objectContaining({ action: 'change_password', targetType: 'user', targetId: 2 })
     )
   })

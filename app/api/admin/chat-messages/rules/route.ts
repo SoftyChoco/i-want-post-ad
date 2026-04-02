@@ -3,6 +3,7 @@ import { getChatMessageTriggerRuleRepo, getDb } from '@/lib/db'
 import { getActorFromHeaders } from '@/lib/request-actor'
 import { createChatMessageTriggerRuleSchema } from '@/lib/validations'
 import { ChatMessageTriggerRule } from '@/lib/entities/ChatMessageTriggerRule'
+import { AuditLog } from '@/lib/entities/AuditLog'
 
 function isMetadataNotFoundError(error: unknown) {
   return error instanceof Error && error.name === 'EntityMetadataNotFoundError'
@@ -69,7 +70,7 @@ export async function POST(request: NextRequest) {
     const db = await getDb()
     await db.transaction(async (manager) => {
       const ruleRepo = manager.getRepository(ChatMessageTriggerRule)
-      const logRepo = manager.getRepository('AuditLog')
+      const logRepo = manager.getRepository(AuditLog)
 
       const rule = ruleRepo.create({
         ruleName: parsed.data.ruleName,
@@ -94,7 +95,7 @@ export async function POST(request: NextRequest) {
           authorName: parsed.data.authorName,
         }),
       })
-      await manager.save('AuditLog', log)
+      await manager.save(AuditLog, log)
     })
 
     return NextResponse.json({ data: created }, { status: 201 })

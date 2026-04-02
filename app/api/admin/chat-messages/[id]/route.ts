@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getChatMessageScheduleRepo, getDb } from '@/lib/db'
 import { getActorFromHeaders } from '@/lib/request-actor'
 import { createChatMessageScheduleSchema, updateChatMessageScheduleSchema } from '@/lib/validations'
+import { ChatMessageSchedule } from '@/lib/entities/ChatMessageSchedule'
+import { AuditLog } from '@/lib/entities/AuditLog'
 
 function parseId(value: string): number | null {
   const parsed = Number(value)
@@ -93,8 +95,8 @@ export async function PATCH(
     let updated: { id?: number } | null = null
     const db = await getDb()
     await db.transaction(async (manager) => {
-      updated = await manager.save('ChatMessageSchedule', current)
-      const log = manager.getRepository('AuditLog').create({
+      updated = await manager.save(ChatMessageSchedule, current)
+      const log = manager.getRepository(AuditLog).create({
         action: 'update_chat_schedule',
         targetType: 'chat_message_schedule',
         targetId: scheduleId,
@@ -105,7 +107,7 @@ export async function PATCH(
           mode: current.mode,
         }),
       })
-      await manager.save('AuditLog', log)
+      await manager.save(AuditLog, log)
     })
 
     return NextResponse.json({ data: updated })
@@ -151,8 +153,8 @@ export async function DELETE(
 
     const db = await getDb()
     await db.transaction(async (manager) => {
-      await manager.remove('ChatMessageSchedule', current)
-      const log = manager.getRepository('AuditLog').create({
+      await manager.remove(ChatMessageSchedule, current)
+      const log = manager.getRepository(AuditLog).create({
         action: 'delete_chat_schedule',
         targetType: 'chat_message_schedule',
         targetId: scheduleId,
@@ -162,7 +164,7 @@ export async function DELETE(
           scheduleName: current.scheduleName,
         }),
       })
-      await manager.save('AuditLog', log)
+      await manager.save(AuditLog, log)
     })
 
     return NextResponse.json({ success: true })

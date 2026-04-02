@@ -4,6 +4,8 @@ import { getDb, getUserRepo } from '@/lib/db'
 import { getActorFromHeaders } from '@/lib/request-actor'
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
 import { changePasswordSchema } from '@/lib/validations'
+import { User } from '@/lib/entities/User'
+import { AuditLog } from '@/lib/entities/AuditLog'
 
 export async function POST(request: NextRequest) {
   const actor = getActorFromHeaders(request.headers)
@@ -53,12 +55,12 @@ export async function POST(request: NextRequest) {
     const newPasswordHash = await hashPassword(parsed.data.newPassword)
     const db = await getDb()
     await db.transaction(async (manager) => {
-      await manager.getRepository('User').update(
+      await manager.getRepository(User).update(
         { id: actor.userId },
         { passwordHash: newPasswordHash }
       )
 
-      const log = manager.getRepository('AuditLog').create({
+      const log = manager.getRepository(AuditLog).create({
         action: 'change_password',
         targetType: 'user',
         targetId: actor.userId,
@@ -66,7 +68,7 @@ export async function POST(request: NextRequest) {
         actorName: actor.name,
         details: null,
       })
-      await manager.save('AuditLog', log)
+      await manager.save(AuditLog, log)
     })
 
     return NextResponse.json({ success: true, message: '비밀번호가 변경되었습니다' })

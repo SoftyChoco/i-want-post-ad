@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
 import { getActorFromHeaders } from '@/lib/request-actor'
 import { createDirectChatMessageSchema } from '@/lib/validations'
+import { ChatMessageDirect } from '@/lib/entities/ChatMessageDirect'
+import { AuditLog } from '@/lib/entities/AuditLog'
 
 function ensureAdminOrModerator(request: NextRequest) {
   const actor = getActorFromHeaders(request.headers)
@@ -38,8 +40,8 @@ export async function POST(request: NextRequest) {
     let created: { id?: number } | null = null
     const db = await getDb()
     await db.transaction(async (manager) => {
-      const directRepo = manager.getRepository('ChatMessageDirect')
-      const logRepo = manager.getRepository('AuditLog')
+      const directRepo = manager.getRepository(ChatMessageDirect)
+      const logRepo = manager.getRepository(AuditLog)
 
       const direct = directRepo.create({
         messageText: parsed.data.messageText,
@@ -48,7 +50,7 @@ export async function POST(request: NextRequest) {
         dispatchedAt: null,
       })
 
-      created = await manager.save('ChatMessageDirect', direct)
+      created = await manager.save(ChatMessageDirect, direct)
 
       const log = logRepo.create({
         action: 'create_chat_direct',
@@ -60,7 +62,7 @@ export async function POST(request: NextRequest) {
           messagePreview: parsed.data.messageText.slice(0, 40),
         }),
       })
-      await manager.save('AuditLog', log)
+      await manager.save(AuditLog, log)
     })
 
     return NextResponse.json({ data: created }, { status: 201 })

@@ -69,8 +69,8 @@ describe('POST /api/chat-events/bulk', () => {
     const batchTxRepo = { create: vi.fn((v) => v) }
     const eventTxRepo = { create: vi.fn((v) => v) }
     const manager = {
-      getRepository: vi.fn((name: string) => {
-        if (name === 'ChatEventBatch') return batchTxRepo
+      getRepository: vi.fn((target: string | { name?: string }) => {
+        if (target === 'ChatEventBatch' || (typeof target !== 'string' && target.name === 'ChatEventBatch')) return batchTxRepo
         return eventTxRepo
       }),
       save: vi.fn()

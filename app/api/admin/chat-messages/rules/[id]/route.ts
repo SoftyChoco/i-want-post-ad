@@ -3,6 +3,7 @@ import { getChatMessageTriggerRuleRepo, getDb } from '@/lib/db'
 import { getActorFromHeaders } from '@/lib/request-actor'
 import { createChatMessageTriggerRuleSchema, updateChatMessageTriggerRuleSchema } from '@/lib/validations'
 import { ChatMessageTriggerRule } from '@/lib/entities/ChatMessageTriggerRule'
+import { AuditLog } from '@/lib/entities/AuditLog'
 
 function isMetadataNotFoundError(error: unknown) {
   return error instanceof Error && error.name === 'EntityMetadataNotFoundError'
@@ -97,7 +98,7 @@ export async function PATCH(
     const db = await getDb()
     await db.transaction(async (manager) => {
       updated = await manager.save(ChatMessageTriggerRule, current)
-      const log = manager.getRepository('AuditLog').create({
+      const log = manager.getRepository(AuditLog).create({
         action: 'update_chat_trigger_rule',
         targetType: 'chat_message_trigger_rule',
         targetId: ruleId,
@@ -109,7 +110,7 @@ export async function PATCH(
           authorName: current.authorName,
         }),
       })
-      await manager.save('AuditLog', log)
+      await manager.save(AuditLog, log)
     })
 
     return NextResponse.json({ data: updated })
@@ -162,7 +163,7 @@ export async function DELETE(
     const db = await getDb()
     await db.transaction(async (manager) => {
       await manager.remove(ChatMessageTriggerRule, current)
-      const log = manager.getRepository('AuditLog').create({
+      const log = manager.getRepository(AuditLog).create({
         action: 'delete_chat_trigger_rule',
         targetType: 'chat_message_trigger_rule',
         targetId: ruleId,
@@ -172,7 +173,7 @@ export async function DELETE(
           ruleName: current.ruleName,
         }),
       })
-      await manager.save('AuditLog', log)
+      await manager.save(AuditLog, log)
     })
 
     return NextResponse.json({ success: true })

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getChatMessageScheduleRepo, getDb } from '@/lib/db'
 import { getActorFromHeaders } from '@/lib/request-actor'
 import { createChatMessageScheduleSchema } from '@/lib/validations'
+import { ChatMessageSchedule } from '@/lib/entities/ChatMessageSchedule'
+import { AuditLog } from '@/lib/entities/AuditLog'
 
 function ensureAdminOrModerator(request: NextRequest) {
   const actor = getActorFromHeaders(request.headers)
@@ -60,8 +62,8 @@ export async function POST(request: NextRequest) {
     let created: { id?: number } | null = null
     const db = await getDb()
     await db.transaction(async (manager) => {
-      const scheduleRepo = manager.getRepository('ChatMessageSchedule')
-      const logRepo = manager.getRepository('AuditLog')
+      const scheduleRepo = manager.getRepository(ChatMessageSchedule)
+      const logRepo = manager.getRepository(AuditLog)
 
       const schedule = scheduleRepo.create({
         scheduleName: parsed.data.scheduleName,
@@ -73,7 +75,7 @@ export async function POST(request: NextRequest) {
         lastDispatchedAt: null,
       })
 
-      created = await manager.save('ChatMessageSchedule', schedule)
+      created = await manager.save(ChatMessageSchedule, schedule)
 
       const log = logRepo.create({
         action: 'create_chat_schedule',
@@ -86,7 +88,7 @@ export async function POST(request: NextRequest) {
           mode: parsed.data.mode,
         }),
       })
-      await manager.save('AuditLog', log)
+      await manager.save(AuditLog, log)
     })
 
     return NextResponse.json({ data: created }, { status: 201 })

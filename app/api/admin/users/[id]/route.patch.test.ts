@@ -57,7 +57,7 @@ describe('PATCH /api/admin/users/[id]', () => {
     const userRepoTx = { update: vi.fn().mockResolvedValue(undefined) }
     const auditRepoTx = { create: vi.fn((v) => v) }
     const manager = {
-      getRepository: vi.fn((name: string) => (name === 'User' ? userRepoTx : auditRepoTx)),
+      getRepository: vi.fn((target: string | { name?: string }) => (target === 'User' || (typeof target !== 'string' && target.name === 'User') ? userRepoTx : auditRepoTx)),
       save: vi.fn().mockResolvedValue(undefined),
     }
     getDbMock.mockResolvedValue({ transaction: vi.fn(async (callback: any) => callback(manager)) })
@@ -73,7 +73,7 @@ describe('PATCH /api/admin/users/[id]', () => {
     })
     expect(userRepoTx.update).toHaveBeenCalledWith({ id: 3 }, { passwordHash: 'hashed-reset' })
     expect(manager.save).toHaveBeenCalledWith(
-      'AuditLog',
+      expect.objectContaining({ name: 'AuditLog' }),
       expect.objectContaining({ action: 'reset_mod_password', targetId: 3 })
     )
   })

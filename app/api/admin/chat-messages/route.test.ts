@@ -31,7 +31,7 @@ describe('admin chat message schedules api', () => {
     const scheduleRepo = { create: vi.fn((v) => v) }
     const logRepo = { create: vi.fn((v) => v) }
     const manager = {
-      getRepository: vi.fn((name: string) => (name === 'ChatMessageSchedule' ? scheduleRepo : logRepo)),
+      getRepository: vi.fn((target: string | { name?: string }) => (target === 'ChatMessageSchedule' || (typeof target !== 'string' && target.name === 'ChatMessageSchedule') ? scheduleRepo : logRepo)),
       save: vi
         .fn()
         .mockResolvedValueOnce({

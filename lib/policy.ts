@@ -1,4 +1,6 @@
 import { getDb, getPolicyDocumentRepo } from './db'
+import { PolicyDocument } from './entities/PolicyDocument'
+import { PolicyRevision } from './entities/PolicyRevision'
 
 export const DEFAULT_POLICY_VERSION = '1.0.0'
 const DEFAULT_POLICY_KEY = 'default'
@@ -183,8 +185,8 @@ export async function getPolicyContent(): Promise<string> {
 export async function setPolicyContent(content: string): Promise<string> {
   const db = await getDb()
   return db.transaction(async (manager) => {
-    const policyRepo = manager.getRepository('PolicyDocument')
-    const revisionRepo = manager.getRepository('PolicyRevision')
+    const policyRepo = manager.getRepository(PolicyDocument)
+    const revisionRepo = manager.getRepository(PolicyRevision)
 
     let existing = await policyRepo.findOne({ where: { key: DEFAULT_POLICY_KEY } })
     if (!existing) {

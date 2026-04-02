@@ -46,9 +46,9 @@ describe('POST /api/admin/users', () => {
       create: vi.fn((v) => v),
     }
     const manager = {
-      getRepository: vi.fn((name: string) => (name === 'User' ? userRepoTx : auditRepoTx)),
-      save: vi.fn().mockImplementation(async (name: string, value: any) => {
-        if (name === 'User') return { id: 3, ...value }
+      getRepository: vi.fn((target: string | { name?: string }) => (target === 'User' || (typeof target !== 'string' && target.name === 'User') ? userRepoTx : auditRepoTx)),
+      save: vi.fn().mockImplementation(async (target: string | { name?: string }, value: any) => {
+        if (target === 'User' || (typeof target !== 'string' && target.name === 'User')) return { id: 3, ...value }
         return value
       }),
     }

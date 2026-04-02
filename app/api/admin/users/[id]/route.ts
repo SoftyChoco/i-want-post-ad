@@ -3,6 +3,8 @@ import { getUserRepo, getDb } from '@/lib/db'
 import { getActorFromHeaders } from '@/lib/request-actor'
 import { hashPassword } from '@/lib/auth'
 import { generateTemporaryPassword } from '@/lib/password'
+import { User } from '@/lib/entities/User'
+import { AuditLog } from '@/lib/entities/AuditLog'
 
 export async function PATCH(
   request: NextRequest,
@@ -49,9 +51,9 @@ export async function PATCH(
 
     const db = await getDb()
     await db.transaction(async (manager) => {
-      await manager.getRepository('User').update({ id: targetId }, { passwordHash })
+      await manager.getRepository(User).update({ id: targetId }, { passwordHash })
 
-      const log = manager.getRepository('AuditLog').create({
+      const log = manager.getRepository(AuditLog).create({
         action: 'reset_mod_password',
         targetType: 'user',
         targetId,
@@ -59,7 +61,7 @@ export async function PATCH(
         actorName: actor.name,
         details: JSON.stringify({ name: targetUser.name }),
       })
-      await manager.save('AuditLog', log)
+      await manager.save(AuditLog, log)
     })
 
     return NextResponse.json({
@@ -123,7 +125,7 @@ export async function DELETE(
 
     const db = await getDb()
     await db.transaction(async (manager) => {
-      const log = manager.getRepository('AuditLog').create({
+      const log = manager.getRepository(AuditLog).create({
         action: 'delete_mod',
         targetType: 'user',
         targetId,
@@ -131,7 +133,7 @@ export async function DELETE(
         actorName: userName,
         details: JSON.stringify({ name: targetUser.name }),
       })
-      await manager.save('AuditLog', log)
+      await manager.save(AuditLog, log)
       await manager.remove(targetUser)
     })
 

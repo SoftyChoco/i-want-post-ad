@@ -28,7 +28,7 @@ describe('admin direct chat message api', () => {
     const directRepo = { create: vi.fn((v) => v) }
     const logRepo = { create: vi.fn((v) => v) }
     const manager = {
-      getRepository: vi.fn((name: string) => (name === 'ChatMessageDirect' ? directRepo : logRepo)),
+      getRepository: vi.fn((target: string | { name?: string }) => (target === 'ChatMessageDirect' || (typeof target !== 'string' && target.name === 'ChatMessageDirect') ? directRepo : logRepo)),
       save: vi
         .fn()
         .mockResolvedValueOnce({ id: 31, messageText: '즉시 공지 테스트', createdByName: '부방장', dispatchedAt: null })

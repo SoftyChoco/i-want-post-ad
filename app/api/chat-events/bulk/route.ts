@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getChatEventBatchRepo, getDb } from '@/lib/db'
 import { getExternalApiToken, hasValidExternalApiToken } from '@/lib/external-api-token'
 import { createChatEventsBulkSchema } from '@/lib/validations'
+import { ChatEventBatch } from '@/lib/entities/ChatEventBatch'
+import { ChatEvent } from '@/lib/entities/ChatEvent'
 
 function isUniqueIdempotencyError(error: unknown): boolean {
   if (!(error instanceof Error)) return false
@@ -57,14 +59,14 @@ export async function POST(request: NextRequest) {
   try {
     const db = await getDb()
     await db.transaction(async (manager) => {
-      const txBatchRepo = manager.getRepository('ChatEventBatch')
-      const txEventRepo = manager.getRepository('ChatEvent')
+      const txBatchRepo = manager.getRepository(ChatEventBatch)
+      const txEventRepo = manager.getRepository(ChatEvent)
 
       const batch = txBatchRepo.create({
         idempotencyKey,
         accepted,
       })
-      const savedBatch = await manager.save('ChatEventBatch', batch)
+      const savedBatch = await manager.save(ChatEventBatch, batch)
 
       const events = parsed.data.events.map((event) =>
         txEventRepo.create({
@@ -75,7 +77,7 @@ export async function POST(request: NextRequest) {
         })
       )
 
-      await manager.save('ChatEvent', events)
+      await manager.save(ChatEvent, events)
     })
 
     return NextResponse.json({ accepted })

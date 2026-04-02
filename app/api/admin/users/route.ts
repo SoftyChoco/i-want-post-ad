@@ -4,6 +4,8 @@ import { createModeratorSchema } from '@/lib/validations'
 import { hashPassword } from '@/lib/auth'
 import { getActorFromHeaders } from '@/lib/request-actor'
 import { generateTemporaryPassword } from '@/lib/password'
+import { User } from '@/lib/entities/User'
+import { AuditLog } from '@/lib/entities/AuditLog'
 
 export async function GET(request: NextRequest) {
   try {
@@ -68,15 +70,15 @@ export async function POST(request: NextRequest) {
     let newUser: any
     const db = await getDb()
     await db.transaction(async (manager) => {
-      const user = manager.getRepository('User').create({
+      const user = manager.getRepository(User).create({
         email: parsed.data.email,
         passwordHash,
         name: parsed.data.name,
         role: 'moderator',
       })
-      newUser = await manager.save('User', user)
+      newUser = await manager.save(User, user)
 
-      const log = manager.getRepository('AuditLog').create({
+      const log = manager.getRepository(AuditLog).create({
         action: 'create_mod',
         targetType: 'user',
         targetId: newUser.id,
@@ -84,7 +86,7 @@ export async function POST(request: NextRequest) {
         actorName: userName,
         details: JSON.stringify({ name: parsed.data.name }),
       })
-      await manager.save('AuditLog', log)
+      await manager.save(AuditLog, log)
     })
 
     return NextResponse.json(
