@@ -71,6 +71,7 @@ export async function PATCH(
       intervalMinutes: parsed.data.intervalMinutes ?? current.intervalMinutes,
       fixedTime: parsed.data.fixedTime ?? current.fixedTime,
       isActive: parsed.data.isActive ?? current.isActive,
+      respectNightBlock: parsed.data.respectNightBlock ?? current.respectNightBlock,
     }
     const mergedValidation = createChatMessageScheduleSchema.safeParse(merged)
     if (!mergedValidation.success) {
@@ -91,6 +92,7 @@ export async function PATCH(
     current.intervalMinutes = mergedValidation.data.mode === 'interval' ? (mergedValidation.data.intervalMinutes || null) : null
     current.fixedTime = mergedValidation.data.mode === 'fixed_time' ? (mergedValidation.data.fixedTime || null) : null
     current.isActive = mergedValidation.data.isActive
+    current.respectNightBlock = mergedValidation.data.respectNightBlock ?? true
 
     let updated: { id?: number } | null = null
     const db = await getDb()

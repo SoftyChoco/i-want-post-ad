@@ -23,6 +23,9 @@ export class ChatMessageSchedule {
   @Column({ type: 'boolean', default: true, name: 'is_active' })
   isActive!: boolean;
 
+  @Column({ type: 'boolean', default: true, name: 'respect_night_block' })
+  respectNightBlock!: boolean;
+
   @Column({ type: 'datetime', nullable: true, name: 'last_dispatched_at' })
   lastDispatchedAt!: Date | null;
 

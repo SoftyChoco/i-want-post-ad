@@ -92,7 +92,7 @@ export async function GET(request: NextRequest) {
 
     const now = new Date()
     const dueSchedules = schedules.filter((schedule) => {
-      if (isWithinNightBlockWindow(settings, now)) return false
+      if (isWithinNightBlockWindow(settings, now) && schedule.respectNightBlock !== false) return false
       return isScheduleDue(schedule, now)
     })
 

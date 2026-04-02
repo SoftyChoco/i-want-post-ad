@@ -54,6 +54,7 @@ const chatMessageScheduleBaseSchema = z.object({
   intervalMinutes: z.number().int().min(1).max(1440).nullable().optional(),
   fixedTime: hhmmSchema.nullable().optional(),
   isActive: z.boolean(),
+  respectNightBlock: z.boolean().optional(),
 })
 
 export const createChatMessageScheduleSchema = chatMessageScheduleBaseSchema.superRefine((value, ctx) => {

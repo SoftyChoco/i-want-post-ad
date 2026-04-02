@@ -65,6 +65,7 @@ export default async function AdminChatMessagesPage() {
           intervalMinutes: s.intervalMinutes,
           fixedTime: s.fixedTime,
           isActive: s.isActive,
+          respectNightBlock: s.respectNightBlock ?? true,
         }))}
         initialTriggerRules={triggerRules.map((rule) => ({
           id: rule.id,

@@ -72,6 +72,7 @@ export async function POST(request: NextRequest) {
         intervalMinutes: parsed.data.mode === 'interval' ? (parsed.data.intervalMinutes || null) : null,
         fixedTime: parsed.data.mode === 'fixed_time' ? (parsed.data.fixedTime || null) : null,
         isActive: parsed.data.isActive,
+        respectNightBlock: parsed.data.respectNightBlock ?? true,
         lastDispatchedAt: null,
       })
 

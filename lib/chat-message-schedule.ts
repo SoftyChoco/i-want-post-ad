@@ -8,6 +8,7 @@ export interface ChatMessageSchedule {
   intervalMinutes: number | null
   fixedTime: string | null
   isActive: boolean
+  respectNightBlock?: boolean
   lastDispatchedAt: Date | null
   createdAt: Date
   updatedAt: Date

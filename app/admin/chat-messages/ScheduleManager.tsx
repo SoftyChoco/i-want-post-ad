@@ -11,6 +11,7 @@ type ScheduleItem = {
   intervalMinutes: number | null
   fixedTime: string | null
   isActive: boolean
+  respectNightBlock: boolean
 }
 
 type Settings = {
@@ -63,6 +64,7 @@ export default function ScheduleManager({
     intervalMinutes: 60,
     fixedTime: '09:00',
     isActive: true,
+    respectNightBlock: true,
   })
   const [directMessageText, setDirectMessageText] = useState('')
   const [triggerRules, setTriggerRules] = useState<TriggerRuleItem[]>(initialTriggerRules)
@@ -137,6 +139,7 @@ export default function ScheduleManager({
         intervalMinutes: form.mode === 'interval' ? form.intervalMinutes : null,
         fixedTime: form.mode === 'fixed_time' ? form.fixedTime : null,
         isActive: form.isActive,
+        respectNightBlock: form.respectNightBlock,
       }
       const res = await fetch('/api/admin/chat-messages', {
         method: 'POST',
@@ -232,6 +235,7 @@ export default function ScheduleManager({
           intervalMinutes: next.mode === 'interval' ? next.intervalMinutes : null,
           fixedTime: next.mode === 'fixed_time' ? next.fixedTime : null,
           isActive: next.isActive,
+          respectNightBlock: next.respectNightBlock,
         }),
       })
       const data = await res.json()
@@ -466,6 +470,14 @@ export default function ScheduleManager({
           />
           활성화
         </label>
+        <label className="flex items-center gap-2 text-sm text-gray-700">
+          <input
+            type="checkbox"
+            checked={form.respectNightBlock}
+            onChange={(e) => setForm((prev) => ({ ...prev, respectNightBlock: e.target.checked }))}
+          />
+          공통 야간 차단 적용
+        </label>
         <button
           type="submit"
           disabled={createLoading}
@@ -573,6 +585,18 @@ export default function ScheduleManager({
                   }
                 />
                 활성화
+              </label>
+              <label className="flex items-center gap-2 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={item.respectNightBlock}
+                  onChange={(e) =>
+                    setSchedules((prev) =>
+                      prev.map((s) => (s.id === item.id ? { ...s, respectNightBlock: e.target.checked } : s))
+                    )
+                  }
+                />
+                야간 차단 적용
               </label>
             </div>
             <div className="flex justify-end">

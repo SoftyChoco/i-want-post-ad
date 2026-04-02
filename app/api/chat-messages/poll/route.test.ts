@@ -108,6 +108,7 @@ describe('GET /api/chat-messages/poll', () => {
       intervalMinutes: 1,
       fixedTime: null,
       isActive: true,
+      respectNightBlock: true,
       createdAt: new Date('2026-04-02T08:00:00.000Z'),
       updatedAt: new Date('2026-04-02T08:00:00.000Z'),
       lastDispatchedAt: new Date('2026-04-02T13:00:00.000Z'),
@@ -137,6 +138,52 @@ describe('GET /api/chat-messages/poll', () => {
 
     expect(response.status).toBe(200)
     await expect(response.json()).resolves.toMatchObject({ data: [] })
+    vi.useRealTimers()
+  })
+
+  it('returns schedule during night window when per-schedule night block is disabled', async () => {
+    process.env.KAKAO_BOT_TOKEN = 'bot-token'
+
+    const allowedSchedule = {
+      id: 12,
+      scheduleName: '야간 허용 스케줄',
+      messageText: '야간에도 발송',
+      mode: 'interval',
+      intervalMinutes: 1,
+      fixedTime: null,
+      isActive: true,
+      respectNightBlock: false,
+      createdAt: new Date('2026-04-02T08:00:00.000Z'),
+      updatedAt: new Date('2026-04-02T08:00:00.000Z'),
+      lastDispatchedAt: new Date('2026-04-02T13:00:00.000Z'),
+    }
+
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-04-02T13:30:00.000Z'))
+
+    getScheduleRepoMock.mockResolvedValue({ find: vi.fn().mockResolvedValue([allowedSchedule]) })
+    getDirectRepoMock.mockResolvedValue({ find: vi.fn().mockResolvedValue([]) })
+    getTriggerRuleRepoMock.mockResolvedValue({ find: vi.fn().mockResolvedValue([]) })
+    getEventRepoMock.mockResolvedValue({ findOne: vi.fn().mockResolvedValue(null) })
+    getSettingsMock.mockResolvedValue({
+      nightBlockEnabled: true,
+      nightStart: '22:00',
+      nightEnd: '07:00',
+    })
+    const manager = {
+      getRepository: vi.fn(() => ({ save: vi.fn().mockResolvedValue({}) })),
+    }
+    getDbMock.mockResolvedValue({ transaction: vi.fn(async (cb: any) => cb(manager)) })
+
+    const request = new NextRequest('http://localhost:3000/api/chat-messages/poll', {
+      headers: { authorization: 'Bearer bot-token' },
+    })
+    const response = await GET(request)
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({
+      data: [{ id: 12, scheduleName: '야간 허용 스케줄', messageText: '야간에도 발송' }],
+    })
     vi.useRealTimers()
   })
 
