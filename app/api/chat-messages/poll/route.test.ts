@@ -161,6 +161,35 @@ describe('GET /api/chat-messages/poll', () => {
     })
   })
 
+  it('filters out already dispatched direct messages defensively', async () => {
+    process.env.KAKAO_BOT_TOKEN = 'bot-token'
+
+    getScheduleRepoMock.mockResolvedValue({ find: vi.fn().mockResolvedValue([]) })
+    getDirectRepoMock.mockResolvedValue({
+      find: vi.fn().mockResolvedValue([
+        {
+          id: 80,
+          messageText: '이미 발송됨',
+          createdByName: '방장',
+          dispatchedAt: new Date('2026-04-03T01:00:00.000Z'),
+        },
+      ]),
+    })
+
+    const manager = {
+      getRepository: vi.fn(() => ({ save: vi.fn().mockResolvedValue({}) })),
+    }
+    getDbMock.mockResolvedValue({ transaction: vi.fn(async (cb: any) => cb(manager)) })
+
+    const request = new NextRequest('http://localhost:3000/api/chat-messages/poll', {
+      headers: { authorization: 'Bearer bot-token' },
+    })
+    const response = await GET(request)
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({ data: [] })
+  })
+
   it('still returns schedule data when direct repo is unavailable', async () => {
     process.env.KAKAO_BOT_TOKEN = 'bot-token'
 

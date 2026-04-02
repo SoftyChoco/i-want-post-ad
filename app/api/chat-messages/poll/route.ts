@@ -4,6 +4,7 @@ import * as dbModule from '@/lib/db'
 import { getOrCreateChatMessageSettings } from '@/lib/chat-message-settings'
 import { getExternalApiToken, hasValidExternalApiToken } from '@/lib/external-api-token'
 import { isScheduleDue, isWithinNightBlockWindow, type ChatMessageSchedule } from '@/lib/chat-message-schedule'
+import { IsNull } from 'typeorm'
 
 type ChatMessageDirectRow = {
   id: number
@@ -38,10 +39,10 @@ export async function GET(request: NextRequest) {
       if (typeof maybeGetter === 'function') {
         const directRepo = await maybeGetter()
         const rows = await directRepo.find({
-          where: { dispatchedAt: null },
+          where: { dispatchedAt: IsNull() },
           order: { createdAt: 'ASC' },
         })
-        directMessages = rows as ChatMessageDirectRow[]
+        directMessages = (rows as ChatMessageDirectRow[]).filter((row) => row.dispatchedAt == null)
       }
     } catch (error) {
       console.error('Chat message direct repo unavailable, skipping direct messages:', error)
