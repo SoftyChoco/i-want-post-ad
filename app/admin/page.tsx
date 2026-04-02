@@ -9,6 +9,19 @@ import AutoRefreshOnProcessing from './components/AutoRefreshOnProcessing'
 import { LessThan, Like } from 'typeorm'
 import { REQUEST_CODE_EXPIRY_MS, getRequestCodeExpiryAt, isRequestCodeExpired } from '@/lib/request-code-expiry'
 
+type AdminListRequestRow = {
+  id: number
+  requestCode: string
+  applicantName: string
+  contentType: string
+  contentTitle: string | null
+  status: string
+  llmStatus: string | null
+  llmVerdict: string | null
+  reviewedAt: Date | null
+  createdAt: Date
+}
+
 const verdictBadge: Record<string, { label: string; color: string }> = {
   compliant: { label: '정책 부합', color: 'bg-green-100 text-green-800' },
   non_compliant: { label: '정책 위반', color: 'bg-red-100 text-red-800' },
@@ -60,13 +73,14 @@ export default async function AdminPage({
     where.requestCode = Like(`%${requestCodeFilter}%`)
   }
 
-  const [requests, total] = await repo.findAndCount({
+  const [rows, total] = await repo.findAndCount({
     where,
     order: { createdAt: 'DESC' },
     skip: (page - 1) * limit,
     take: limit,
     relations: ['reviewedBy'],
   })
+  const requests = rows as AdminListRequestRow[]
 
   const totalPages = Math.ceil(total / limit)
   const hasProcessing = requests.some((r) => resolveLlmStatus(r.llmStatus, r.llmVerdict) === 'processing')

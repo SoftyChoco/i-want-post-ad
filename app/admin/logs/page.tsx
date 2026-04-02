@@ -5,6 +5,16 @@ import { getAuditLogRepo } from '@/lib/db'
 import { verifyToken } from '@/lib/auth'
 import { formatAuditDetail } from './log-detail'
 
+type AuditLogRow = {
+  id: number
+  action: string
+  targetType: string
+  targetId: number | null
+  actorName: string
+  details: string | null
+  createdAt: Date
+}
+
 const actionBadge: Record<string, { label: string; color: string }> = {
   approve: { label: '승인', color: 'bg-green-100 text-green-800' },
   reject: { label: '거절', color: 'bg-red-100 text-red-800' },
@@ -42,12 +52,13 @@ export default async function LogsPage({
   const page = Math.max(1, Number(sp.page) || 1)
   const limit = 20
 
-    const repo = await getAuditLogRepo()
-    const [logs, total] = await repo.findAndCount({
+  const repo = await getAuditLogRepo()
+  const [rows, total] = await repo.findAndCount({
     order: { createdAt: 'DESC' },
     skip: (page - 1) * limit,
     take: limit,
   })
+  const logs = rows as AuditLogRow[]
 
   const totalPages = Math.ceil(total / limit)
 
