@@ -6,6 +6,8 @@ import { getExternalApiToken, hasValidExternalApiToken } from '@/lib/external-ap
 import { isScheduleDue, isWithinNightBlockWindow, type ChatMessageSchedule } from '@/lib/chat-message-schedule'
 import { IsNull, Like, MoreThan } from 'typeorm'
 import { ChatMessageTriggerRule } from '@/lib/entities/ChatMessageTriggerRule'
+import { ChatMessageSchedule as ChatMessageScheduleEntity } from '@/lib/entities/ChatMessageSchedule'
+import { ChatMessageDirect as ChatMessageDirectEntity } from '@/lib/entities/ChatMessageDirect'
 
 type ChatMessageDirectRow = {
   id: number
@@ -48,9 +50,17 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const repo = await getChatMessageScheduleRepo()
     const settings = await getOrCreateChatMessageSettings()
-    const schedules = (await repo.find({ where: { isActive: true } })) as unknown as ChatMessageSchedule[]
+    let schedules: ChatMessageSchedule[] = []
+    try {
+      const repo = await getChatMessageScheduleRepo()
+      schedules = (await repo.find({ where: { isActive: true } })) as unknown as ChatMessageSchedule[]
+    } catch (error) {
+      if (!isMetadataNotFoundError(error)) {
+        throw error
+      }
+      console.error('Chat message schedule metadata unavailable, skipping schedules:', error)
+    }
     let triggerRules: ChatMessageTriggerRuleRow[] = []
     let eventRepo: Awaited<ReturnType<typeof getChatEventRepo>> | null = null
     try {
@@ -110,8 +120,8 @@ export async function GET(request: NextRequest) {
     if (dueSchedules.length > 0 || directMessages.length > 0 || triggerMessages.length > 0) {
       const db = await getDb()
       await db.transaction(async (manager) => {
-        const scheduleRepo = manager.getRepository('ChatMessageSchedule')
-        const pendingDirectRepo = manager.getRepository('ChatMessageDirect')
+        const scheduleRepo = manager.getRepository(ChatMessageScheduleEntity)
+        const pendingDirectRepo = manager.getRepository(ChatMessageDirectEntity)
         const pendingTriggerRuleRepo = manager.getRepository(ChatMessageTriggerRule)
         for (const schedule of dueSchedules) {
           schedule.lastDispatchedAt = now

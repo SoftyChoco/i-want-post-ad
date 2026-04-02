@@ -320,4 +320,38 @@ describe('GET /api/chat-messages/poll', () => {
       data: [{ id: 35, scheduleName: '기본 스케줄', messageText: '스케줄 우선 확인' }],
     })
   })
+
+  it('returns direct messages when schedule metadata is unavailable', async () => {
+    process.env.KAKAO_BOT_TOKEN = 'bot-token'
+
+    const metadataError = Object.assign(new Error('No metadata'), { name: 'EntityMetadataNotFoundError' })
+    getScheduleRepoMock.mockRejectedValue(metadataError)
+    getDirectRepoMock.mockResolvedValue({
+      find: vi.fn().mockResolvedValue([
+        {
+          id: 88,
+          messageText: '스케줄 없이 직접 메시지',
+          createdByName: '방장',
+          dispatchedAt: null,
+        },
+      ]),
+    })
+    getTriggerRuleRepoMock.mockResolvedValue({ find: vi.fn().mockResolvedValue([]) })
+    getEventRepoMock.mockResolvedValue({ findOne: vi.fn().mockResolvedValue(null) })
+
+    const manager = {
+      getRepository: vi.fn(() => ({ save: vi.fn().mockResolvedValue({}) })),
+    }
+    getDbMock.mockResolvedValue({ transaction: vi.fn(async (cb: any) => cb(manager)) })
+
+    const request = new NextRequest('http://localhost:3000/api/chat-messages/poll', {
+      headers: { authorization: 'Bearer bot-token' },
+    })
+    const response = await GET(request)
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({
+      data: [{ id: 88, scheduleName: '직접 메시지', messageText: '스케줄 없이 직접 메시지' }],
+    })
+  })
 })
