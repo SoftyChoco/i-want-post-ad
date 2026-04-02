@@ -13,6 +13,10 @@ type ChatEventRow = {
   createdAt: Date
 }
 
+function formatUtc(value: Date | string) {
+  return new Date(value).toISOString()
+}
+
 export default async function ChatEventsPage({
   searchParams,
 }: {
@@ -73,10 +77,10 @@ export default async function ChatEventsPage({
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-200 text-left text-gray-600 bg-gray-50">
-              <th className="py-3 px-4 font-medium">관찰시각</th>
+              <th className="py-3 px-4 font-medium">관찰시각 (UTC)</th>
               <th className="py-3 px-4 font-medium">작성자</th>
               <th className="py-3 px-4 font-medium">내용</th>
-              <th className="py-3 px-4 font-medium">수집시각</th>
+              <th className="py-3 px-4 font-medium">수집시각 (UTC)</th>
             </tr>
           </thead>
           <tbody>
@@ -89,10 +93,10 @@ export default async function ChatEventsPage({
             ) : (
               events.map((event) => (
                 <tr key={event.id} className="border-b border-gray-100">
-                  <td className="py-3 px-4 text-xs text-gray-500">{new Date(event.observedAt).toLocaleString('ko-KR')}</td>
+                  <td className="py-3 px-4 text-xs text-gray-500">{formatUtc(event.observedAt)}</td>
                   <td className="py-3 px-4">{event.authorName}</td>
                   <td className="py-3 px-4 max-w-xl break-all">{event.content}</td>
-                  <td className="py-3 px-4 text-xs text-gray-500">{new Date(event.createdAt).toLocaleString('ko-KR')}</td>
+                  <td className="py-3 px-4 text-xs text-gray-500">{formatUtc(event.createdAt)}</td>
                 </tr>
               ))
             )}
