@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { NextRequest } from 'next/server'
 
-const { getRepoMock, getDbMock } = vi.hoisted(() => ({
-  getRepoMock: vi.fn(),
+const { getScheduleRepoMock, getDirectRepoMock, getDbMock } = vi.hoisted(() => ({
+  getScheduleRepoMock: vi.fn(),
+  getDirectRepoMock: vi.fn(),
   getDbMock: vi.fn(),
 }))
 
@@ -11,7 +12,8 @@ const { getSettingsMock } = vi.hoisted(() => ({
 }))
 
 vi.mock('@/lib/db', () => ({
-  getChatMessageScheduleRepo: getRepoMock,
+  getChatMessageScheduleRepo: getScheduleRepoMock,
+  getChatMessageDirectRepo: getDirectRepoMock,
   getDb: getDbMock,
 }))
 
@@ -24,7 +26,8 @@ import { GET } from '@/app/api/chat-messages/poll/route'
 describe('GET /api/chat-messages/poll', () => {
   beforeEach(() => {
     delete process.env.KAKAO_BOT_TOKEN
-    getRepoMock.mockReset()
+    getScheduleRepoMock.mockReset()
+    getDirectRepoMock.mockReset()
     getDbMock.mockReset()
     getSettingsMock.mockReset()
     getSettingsMock.mockResolvedValue({
@@ -67,7 +70,8 @@ describe('GET /api/chat-messages/poll', () => {
       lastDispatchedAt: new Date('2026-04-02T08:00:00.000Z'),
     }
 
-    getRepoMock.mockResolvedValue({ find: vi.fn().mockResolvedValue([dueSchedule]) })
+    getScheduleRepoMock.mockResolvedValue({ find: vi.fn().mockResolvedValue([dueSchedule]) })
+    getDirectRepoMock.mockResolvedValue({ find: vi.fn().mockResolvedValue([]) })
 
     const manager = {
       getRepository: vi.fn(() => ({ save: vi.fn().mockResolvedValue({}) })),
@@ -104,7 +108,8 @@ describe('GET /api/chat-messages/poll', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-04-02T13:30:00.000Z'))
 
-    getRepoMock.mockResolvedValue({ find: vi.fn().mockResolvedValue([blockedSchedule]) })
+    getScheduleRepoMock.mockResolvedValue({ find: vi.fn().mockResolvedValue([blockedSchedule]) })
+    getDirectRepoMock.mockResolvedValue({ find: vi.fn().mockResolvedValue([]) })
     getSettingsMock.mockResolvedValue({
       nightBlockEnabled: true,
       nightStart: '22:00',
@@ -123,5 +128,36 @@ describe('GET /api/chat-messages/poll', () => {
     expect(response.status).toBe(200)
     await expect(response.json()).resolves.toMatchObject({ data: [] })
     vi.useRealTimers()
+  })
+
+  it('returns pending direct message and marks it dispatched', async () => {
+    process.env.KAKAO_BOT_TOKEN = 'bot-token'
+
+    getScheduleRepoMock.mockResolvedValue({ find: vi.fn().mockResolvedValue([]) })
+    getDirectRepoMock.mockResolvedValue({
+      find: vi.fn().mockResolvedValue([
+        {
+          id: 77,
+          messageText: '직접 메시지 테스트',
+          createdByName: '방장',
+          dispatchedAt: null,
+        },
+      ]),
+    })
+
+    const manager = {
+      getRepository: vi.fn(() => ({ save: vi.fn().mockResolvedValue({}) })),
+    }
+    getDbMock.mockResolvedValue({ transaction: vi.fn(async (cb: any) => cb(manager)) })
+
+    const request = new NextRequest('http://localhost:3000/api/chat-messages/poll', {
+      headers: { authorization: 'Bearer bot-token' },
+    })
+    const response = await GET(request)
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({
+      data: [{ id: 77, scheduleName: '직접 메시지', messageText: '직접 메시지 테스트' }],
+    })
   })
 })

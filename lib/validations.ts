@@ -88,3 +88,7 @@ export const updateChatMessageSettingsSchema = z.object({
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['nightEnd'], message: '야간 시작/종료 시간은 달라야 합니다' })
   }
 })
+
+export const createDirectChatMessageSchema = z.object({
+  messageText: z.string().min(1, '메시지 내용을 입력해주세요').max(1000),
+})

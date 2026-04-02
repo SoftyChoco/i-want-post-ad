@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   adSubmitSchema,
   createChatMessageScheduleSchema,
+  createDirectChatMessageSchema,
   createModeratorSchema,
   loginSchema,
   reviewSchema,
@@ -139,5 +140,10 @@ describe('chat message schedule schemas', () => {
         nightEnd: '07:00',
       }).success
     ).toBe(false)
+  })
+
+  it('validates direct chat message payload', () => {
+    expect(createDirectChatMessageSchema.safeParse({ messageText: '즉시 공지' }).success).toBe(true)
+    expect(createDirectChatMessageSchema.safeParse({ messageText: '' }).success).toBe(false)
   })
 })

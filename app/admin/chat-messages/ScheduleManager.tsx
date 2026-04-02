@@ -19,6 +19,8 @@ type Settings = {
   nightEnd: string | null
 }
 
+type TabKey = 'direct' | 'schedule' | 'night'
+
 export default function ScheduleManager({
   initialSchedules,
   initialSettings,
@@ -29,8 +31,12 @@ export default function ScheduleManager({
   const router = useRouter()
   const [schedules, setSchedules] = useState<ScheduleItem[]>(initialSchedules)
   const [createLoading, setCreateLoading] = useState(false)
+  const [directLoading, setDirectLoading] = useState(false)
   const [settingsSaving, setSettingsSaving] = useState(false)
+  const [savingScheduleId, setSavingScheduleId] = useState<number | null>(null)
+  const [activeTab, setActiveTab] = useState<TabKey>('direct')
   const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
   const [settings, setSettings] = useState<Settings>({
     nightBlockEnabled: initialSettings.nightBlockEnabled,
     nightStart: initialSettings.nightStart || '22:00',
@@ -44,6 +50,7 @@ export default function ScheduleManager({
     fixedTime: '09:00',
     isActive: true,
   })
+  const [directMessageText, setDirectMessageText] = useState('')
 
   async function refreshSchedules() {
     const [schedulesRes, settingsRes] = await Promise.all([
@@ -67,6 +74,7 @@ export default function ScheduleManager({
 
   async function saveSettings() {
     setError(null)
+    setNotice(null)
     setSettingsSaving(true)
     try {
       const res = await fetch('/api/admin/chat-messages/settings', {
@@ -82,6 +90,7 @@ export default function ScheduleManager({
       const data = await res.json()
       if (!res.ok) throw new Error(data.error?.message || '설정 저장에 실패했습니다')
       await refreshSchedules()
+      setNotice('공통 야간 차단 설정을 저장했습니다.')
     } catch (err) {
       setError(err instanceof Error ? err.message : '설정 저장에 실패했습니다')
     } finally {
@@ -92,6 +101,7 @@ export default function ScheduleManager({
   async function createSchedule(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
+    setNotice(null)
     setCreateLoading(true)
     try {
       const payload = {
@@ -112,6 +122,7 @@ export default function ScheduleManager({
       if (!res.ok) throw new Error(data.error?.message || '생성에 실패했습니다')
       await refreshSchedules()
       setForm((prev) => ({ ...prev, scheduleName: '', messageText: '' }))
+      setNotice('스케줄을 생성했습니다.')
     } catch (err) {
       setError(err instanceof Error ? err.message : '생성에 실패했습니다')
     } finally {
@@ -119,8 +130,33 @@ export default function ScheduleManager({
     }
   }
 
+  async function createDirectMessage(e: React.FormEvent) {
+    e.preventDefault()
+    setError(null)
+    setNotice(null)
+    setDirectLoading(true)
+    try {
+      const res = await fetch('/api/admin/chat-messages/direct', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ messageText: directMessageText }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error?.message || '직접 메시지 작성에 실패했습니다')
+      setDirectMessageText('')
+      setNotice('직접 메시지를 등록했습니다. 봇이 다음 poll에서 읽어갑니다.')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '직접 메시지 작성에 실패했습니다')
+    } finally {
+      setDirectLoading(false)
+    }
+  }
+
   async function updateSchedule(item: ScheduleItem, patch: Partial<ScheduleItem>) {
     setError(null)
+    setNotice(null)
+    setSavingScheduleId(item.id)
     const next = { ...item, ...patch }
     try {
       const res = await fetch(`/api/admin/chat-messages/${item.id}`, {
@@ -139,14 +175,18 @@ export default function ScheduleManager({
       const data = await res.json()
       if (!res.ok) throw new Error(data.error?.message || '수정에 실패했습니다')
       await refreshSchedules()
+      setNotice('스케줄을 저장했습니다.')
     } catch (err) {
       setError(err instanceof Error ? err.message : '수정에 실패했습니다')
+    } finally {
+      setSavingScheduleId(null)
     }
   }
 
   async function deleteSchedule(item: ScheduleItem) {
     if (!window.confirm('해당 스케줄을 삭제하시겠습니까?')) return
     setError(null)
+    setNotice(null)
     try {
       const res = await fetch(`/api/admin/chat-messages/${item.id}`, {
         method: 'DELETE',
@@ -155,6 +195,7 @@ export default function ScheduleManager({
       const data = await res.json()
       if (!res.ok) throw new Error(data.error?.message || '삭제에 실패했습니다')
       await refreshSchedules()
+      setNotice('스케줄을 삭제했습니다.')
     } catch (err) {
       setError(err instanceof Error ? err.message : '삭제에 실패했습니다')
     }
@@ -162,6 +203,40 @@ export default function ScheduleManager({
 
   return (
     <div className="space-y-6">
+      <div className="flex gap-2 border-b border-gray-200">
+        <button
+          type="button"
+          onClick={() => setActiveTab('direct')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
+            activeTab === 'direct' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          직접 메시지 작성
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('schedule')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
+            activeTab === 'schedule' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          스케줄 관리
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('night')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
+            activeTab === 'night' ? 'border-gray-700 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          공통 야간 차단 설정
+        </button>
+      </div>
+
+      {notice && <p className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-md px-3 py-2">{notice}</p>}
+      {error && <p className="text-sm text-red-600">{error}</p>}
+
+      {activeTab === 'night' && (
       <section className="bg-white border border-gray-200 rounded-lg p-5 space-y-4">
         <h2 className="text-lg font-semibold text-gray-900">공통 야간 차단 설정</h2>
         <label className="flex items-center gap-2 text-sm text-gray-700">
@@ -205,7 +280,9 @@ export default function ScheduleManager({
           </button>
         </div>
       </section>
+      )}
 
+      {activeTab === 'schedule' && (
       <form onSubmit={createSchedule} className="bg-white border border-gray-200 rounded-lg p-5 space-y-4">
         <h2 className="text-lg font-semibold text-gray-900">스케줄 생성</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -272,7 +349,6 @@ export default function ScheduleManager({
           />
           활성화
         </label>
-        {error && <p className="text-sm text-red-600">{error}</p>}
         <button
           type="submit"
           disabled={createLoading}
@@ -281,9 +357,37 @@ export default function ScheduleManager({
           {createLoading ? '생성중...' : '스케줄 생성'}
         </button>
       </form>
+      )}
 
+      {activeTab === 'direct' && (
+      <form onSubmit={createDirectMessage} className="bg-white border border-gray-200 rounded-lg p-5 space-y-4">
+        <h2 className="text-lg font-semibold text-gray-900">직접 메시지 작성</h2>
+        <p className="text-sm text-gray-600">저장하면 봇이 다음 poll 시점에 즉시 읽어갑니다.</p>
+        <textarea
+          value={directMessageText}
+          onChange={(e) => setDirectMessageText(e.target.value)}
+          rows={3}
+          required
+          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+          placeholder="즉시 보낼 메시지를 입력하세요"
+        />
+        <div className="flex justify-end">
+          <button
+            type="submit"
+            disabled={directLoading}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm disabled:opacity-50"
+          >
+            {directLoading ? '작성중...' : '직접 메시지 작성'}
+          </button>
+        </div>
+      </form>
+      )}
+
+      {activeTab === 'schedule' && (
       <div className="space-y-3">
-        {schedules.map((item) => (
+        {schedules.length === 0 ? (
+          <div className="text-sm text-gray-500 py-4">등록된 스케줄이 없습니다.</div>
+        ) : schedules.map((item) => (
           <section key={item.id} className="bg-white border border-gray-200 rounded-lg p-4 space-y-3">
             <div className="flex items-center justify-between">
               <input
@@ -356,15 +460,18 @@ export default function ScheduleManager({
             </div>
             <div className="flex justify-end">
               <button
+                type="button"
                 onClick={() => updateSchedule(item, {})}
-                className="px-3 py-1.5 bg-gray-900 text-white rounded text-sm"
+                disabled={savingScheduleId === item.id}
+                className="px-3 py-1.5 bg-gray-900 text-white rounded text-sm disabled:opacity-50"
               >
-                저장
+                {savingScheduleId === item.id ? '저장중...' : '저장'}
               </button>
             </div>
           </section>
         ))}
       </div>
+      )}
     </div>
   )
 }

@@ -30,7 +30,7 @@ export default async function AdminChatMessagesPage() {
   return (
     <div className="max-w-5xl mx-auto px-4 py-8">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">채팅방 메시지 스케줄</h1>
+        <h1 className="text-2xl font-bold text-gray-900">채팅방 메시지 관리</h1>
         <Link href="/admin" className="text-sm text-blue-600 hover:underline">← 목록으로</Link>
       </div>
       <ScheduleManager
