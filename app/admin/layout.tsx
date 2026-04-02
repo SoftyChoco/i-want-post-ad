@@ -24,6 +24,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                 <Link href="/admin/chat-messages" className="text-sm font-medium text-gray-600 hover:text-blue-600">채팅 메시지 관리</Link>
               )}
               {(user?.role === 'admin' || user?.role === 'moderator') && (
+                <Link href="/admin/chat-events" className="text-sm font-medium text-gray-600 hover:text-blue-600">채팅 수집 목록</Link>
+              )}
+              {(user?.role === 'admin' || user?.role === 'moderator') && (
                 <Link href="/admin/logs" className="text-sm font-medium text-gray-600 hover:text-blue-600">감사 로그</Link>
               )}
               {(user?.role === 'admin' || user?.role === 'moderator') && (

@@ -92,3 +92,13 @@ export const updateChatMessageSettingsSchema = z.object({
 export const createDirectChatMessageSchema = z.object({
   messageText: z.string().min(1, '메시지 내용을 입력해주세요').max(1000),
 })
+
+const chatEventSchema = z.object({
+  observedAt: z.string().datetime('observedAt 형식이 올바르지 않습니다'),
+  authorName: z.string().min(1, 'authorName을 입력해주세요').max(100),
+  content: z.string().min(1, 'content를 입력해주세요').max(2000),
+})
+
+export const createChatEventsBulkSchema = z.object({
+  events: z.array(chatEventSchema).min(1, '최소 1건 이상의 이벤트가 필요합니다').max(20, '최대 20건까지 전송할 수 있습니다'),
+})

@@ -35,6 +35,7 @@ export async function proxy(request: NextRequest) {
   const isVerifyApi = pathname === '/api/verify'
   const isRequestsSummaryApi = pathname === '/api/requests/summary'
   const isChatMessagesPollApi = pathname === '/api/chat-messages/poll'
+  const isChatEventsBulkApi = pathname === '/api/chat-events/bulk'
   const isHealthApi = pathname.startsWith('/api/health')
   const isAdminPage = pathname.startsWith('/admin')
   const isLoginPage = pathname === '/login'
@@ -44,7 +45,7 @@ export async function proxy(request: NextRequest) {
     isAnyApiRoute &&
     !isInternalMaintenanceApi &&
     !isHealthApi &&
-    !((isVerifyApi || isRequestsSummaryApi || isChatMessagesPollApi) && hasValidExternalToken) &&
+    !((isVerifyApi || isRequestsSummaryApi || isChatMessagesPollApi || isChatEventsBulkApi) && hasValidExternalToken) &&
     !isSameOriginUiRequest(request)
   ) {
     return NextResponse.json(

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   adSubmitSchema,
+  createChatEventsBulkSchema,
   createChatMessageScheduleSchema,
   createDirectChatMessageSchema,
   createModeratorSchema,
@@ -145,5 +146,21 @@ describe('chat message schedule schemas', () => {
   it('validates direct chat message payload', () => {
     expect(createDirectChatMessageSchema.safeParse({ messageText: '즉시 공지' }).success).toBe(true)
     expect(createDirectChatMessageSchema.safeParse({ messageText: '' }).success).toBe(false)
+  })
+
+  it('validates chat events bulk payload constraints', () => {
+    expect(
+      createChatEventsBulkSchema.safeParse({
+        events: [
+          {
+            observedAt: '2026-04-03T10:15:30.123Z',
+            authorName: '@softycho.co',
+            content: '안녕하세요',
+          },
+        ],
+      }).success
+    ).toBe(true)
+
+    expect(createChatEventsBulkSchema.safeParse({ events: [] }).success).toBe(false)
   })
 })

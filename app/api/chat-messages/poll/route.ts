@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getChatMessageDirectRepo, getChatMessageScheduleRepo, getDb } from '@/lib/db'
+import { getChatMessageScheduleRepo, getDb } from '@/lib/db'
+import * as dbModule from '@/lib/db'
 import { getOrCreateChatMessageSettings } from '@/lib/chat-message-settings'
 import { getExternalApiToken, hasValidExternalApiToken } from '@/lib/external-api-token'
 import { isScheduleDue, isWithinNightBlockWindow, type ChatMessageSchedule } from '@/lib/chat-message-schedule'
+
+type ChatMessageDirectRow = {
+  id: number
+  messageText: string
+  dispatchedAt: Date | null
+}
 
 export async function GET(request: NextRequest) {
   const externalToken = getExternalApiToken()
@@ -22,13 +29,24 @@ export async function GET(request: NextRequest) {
 
   try {
     const repo = await getChatMessageScheduleRepo()
-    const directRepo = await getChatMessageDirectRepo()
     const settings = await getOrCreateChatMessageSettings()
     const schedules = (await repo.find({ where: { isActive: true } })) as unknown as ChatMessageSchedule[]
-    const directMessages = await directRepo.find({
-      where: { dispatchedAt: null },
-      order: { createdAt: 'ASC' },
-    })
+    let directMessages: ChatMessageDirectRow[] = []
+
+    try {
+      const maybeGetter = (dbModule as { getChatMessageDirectRepo?: unknown }).getChatMessageDirectRepo
+      if (typeof maybeGetter === 'function') {
+        const directRepo = await maybeGetter()
+        const rows = await directRepo.find({
+          where: { dispatchedAt: null },
+          order: { createdAt: 'ASC' },
+        })
+        directMessages = rows as ChatMessageDirectRow[]
+      }
+    } catch (error) {
+      console.error('Chat message direct repo unavailable, skipping direct messages:', error)
+    }
+
     const now = new Date()
     const dueSchedules = schedules.filter((schedule) => {
       if (isWithinNightBlockWindow(settings, now)) return false

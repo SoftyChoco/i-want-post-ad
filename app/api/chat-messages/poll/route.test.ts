@@ -160,4 +160,39 @@ describe('GET /api/chat-messages/poll', () => {
       data: [{ id: 77, scheduleName: '직접 메시지', messageText: '직접 메시지 테스트' }],
     })
   })
+
+  it('still returns schedule data when direct repo is unavailable', async () => {
+    process.env.KAKAO_BOT_TOKEN = 'bot-token'
+
+    const dueSchedule = {
+      id: 21,
+      scheduleName: '스케줄 메시지',
+      messageText: '정상 스케줄 메시지',
+      mode: 'interval',
+      intervalMinutes: 1,
+      fixedTime: null,
+      isActive: true,
+      createdAt: new Date('2026-04-02T08:00:00.000Z'),
+      updatedAt: new Date('2026-04-02T08:00:00.000Z'),
+      lastDispatchedAt: new Date('2026-04-02T08:00:00.000Z'),
+    }
+
+    getScheduleRepoMock.mockResolvedValue({ find: vi.fn().mockResolvedValue([dueSchedule]) })
+    getDirectRepoMock.mockRejectedValue(new TypeError('getChatMessageDirectRepo is not a function'))
+
+    const manager = {
+      getRepository: vi.fn(() => ({ save: vi.fn().mockResolvedValue({}) })),
+    }
+    getDbMock.mockResolvedValue({ transaction: vi.fn(async (cb: any) => cb(manager)) })
+
+    const request = new NextRequest('http://localhost:3000/api/chat-messages/poll', {
+      headers: { authorization: 'Bearer bot-token' },
+    })
+    const response = await GET(request)
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({
+      data: [{ id: 21, scheduleName: '스케줄 메시지', messageText: '정상 스케줄 메시지' }],
+    })
+  })
 })

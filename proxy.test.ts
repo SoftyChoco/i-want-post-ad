@@ -162,6 +162,29 @@ describe('proxy behavior', () => {
     expect(response.status).toBe(403)
   })
 
+  it('allows direct /api/chat-events/bulk when bot token is valid', async () => {
+    const request = new NextRequest('http://localhost:3000/api/chat-events/bulk', {
+      headers: {
+        host: 'localhost:3000',
+        authorization: 'Bearer bot-token',
+      },
+    })
+
+    const response = await proxy(request)
+
+    expect(response.status).toBe(200)
+  })
+
+  it('still blocks direct /api/chat-events/bulk without bot token', async () => {
+    const request = new NextRequest('http://localhost:3000/api/chat-events/bulk', {
+      headers: { host: 'localhost:3000' },
+    })
+
+    const response = await proxy(request)
+
+    expect(response.status).toBe(403)
+  })
+
   it('allows health path through origin guard', async () => {
     const request = new NextRequest('http://localhost:3000/api/health', {
       headers: { host: 'localhost:3000' },

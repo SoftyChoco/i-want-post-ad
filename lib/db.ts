@@ -9,6 +9,8 @@ import { PolicyRevision } from './entities/PolicyRevision';
 import { ChatMessageSchedule } from './entities/ChatMessageSchedule';
 import { ChatMessageSettings } from './entities/ChatMessageSettings';
 import { ChatMessageDirect } from './entities/ChatMessageDirect';
+import { ChatEventBatch } from './entities/ChatEventBatch';
+import { ChatEvent } from './entities/ChatEvent';
 import { mkdirSync } from 'fs';
 
 mkdirSync(path.resolve(process.cwd(), 'data'), { recursive: true });
@@ -18,7 +20,18 @@ declare global { var __db__: DataSource | undefined }
 const AppDataSource = globalThis.__db__ || new DataSource({
   type: 'better-sqlite3',
   database: process.env.DATABASE_URL || path.resolve(process.cwd(), 'data', 'db.sqlite'),
-  entities: [User, AdRequest, AuditLog, PolicyDocument, PolicyRevision, ChatMessageSchedule, ChatMessageSettings, ChatMessageDirect],
+  entities: [
+    User,
+    AdRequest,
+    AuditLog,
+    PolicyDocument,
+    PolicyRevision,
+    ChatMessageSchedule,
+    ChatMessageSettings,
+    ChatMessageDirect,
+    ChatEventBatch,
+    ChatEvent,
+  ],
   synchronize: process.env.NODE_ENV !== 'production',
   logging: process.env.NODE_ENV === 'development' ? ['query', 'error'] : ['error'],
   prepareDatabase: (db) => {
@@ -79,6 +92,16 @@ export async function getChatMessageSettingsRepo() {
 export async function getChatMessageDirectRepo() {
   const db = await getDb();
   return db.getRepository('ChatMessageDirect');
+}
+
+export async function getChatEventBatchRepo() {
+  const db = await getDb();
+  return db.getRepository('ChatEventBatch');
+}
+
+export async function getChatEventRepo() {
+  const db = await getDb();
+  return db.getRepository('ChatEvent');
 }
 
 export { AppDataSource };
