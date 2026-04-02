@@ -1,10 +1,14 @@
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { getChatMessageScheduleRepo } from '@/lib/db'
+import { getChatMessageScheduleRepo, getChatMessageTriggerRuleRepo } from '@/lib/db'
 import { verifyToken } from '@/lib/auth'
 import ScheduleManager from './ScheduleManager'
 import { getOrCreateChatMessageSettings } from '@/lib/chat-message-settings'
+
+function isMetadataNotFoundError(error: unknown) {
+  return error instanceof Error && error.name === 'EntityMetadataNotFoundError'
+}
 
 export default async function AdminChatMessagesPage() {
   const cookieStore = await cookies()
@@ -25,6 +29,24 @@ export default async function AdminChatMessagesPage() {
 
   const repo = await getChatMessageScheduleRepo()
   const schedules = await repo.find({ order: { id: 'ASC' } })
+  let triggerRules: Array<{
+    id: number
+    ruleName: string
+    keyword: string
+    authorName: string | null
+    responseText: string
+    isActive: boolean
+    lastMatchedEventId: number | null
+  }> = []
+  try {
+    const triggerRuleRepo = await getChatMessageTriggerRuleRepo()
+    triggerRules = await triggerRuleRepo.find({ order: { id: 'ASC' } })
+  } catch (error) {
+    if (!isMetadataNotFoundError(error)) {
+      throw error
+    }
+    console.error('Trigger rule metadata unavailable, rendering with empty rules:', error)
+  }
   const settings = await getOrCreateChatMessageSettings()
 
   return (
@@ -43,6 +65,15 @@ export default async function AdminChatMessagesPage() {
           intervalMinutes: s.intervalMinutes,
           fixedTime: s.fixedTime,
           isActive: s.isActive,
+        }))}
+        initialTriggerRules={triggerRules.map((rule) => ({
+          id: rule.id,
+          ruleName: rule.ruleName,
+          keyword: rule.keyword,
+          authorName: rule.authorName,
+          responseText: rule.responseText,
+          isActive: rule.isActive,
+          lastMatchedEventId: rule.lastMatchedEventId,
         }))}
       />
     </div>

@@ -1,9 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { NextRequest } from 'next/server'
 
-const { getScheduleRepoMock, getDirectRepoMock, getDbMock } = vi.hoisted(() => ({
+const { getScheduleRepoMock, getDirectRepoMock, getTriggerRuleRepoMock, getEventRepoMock, getDbMock } = vi.hoisted(() => ({
   getScheduleRepoMock: vi.fn(),
   getDirectRepoMock: vi.fn(),
+  getTriggerRuleRepoMock: vi.fn(),
+  getEventRepoMock: vi.fn(),
   getDbMock: vi.fn(),
 }))
 
@@ -14,6 +16,8 @@ const { getSettingsMock } = vi.hoisted(() => ({
 vi.mock('@/lib/db', () => ({
   getChatMessageScheduleRepo: getScheduleRepoMock,
   getChatMessageDirectRepo: getDirectRepoMock,
+  getChatMessageTriggerRuleRepo: getTriggerRuleRepoMock,
+  getChatEventRepo: getEventRepoMock,
   getDb: getDbMock,
 }))
 
@@ -28,6 +32,8 @@ describe('GET /api/chat-messages/poll', () => {
     delete process.env.KAKAO_BOT_TOKEN
     getScheduleRepoMock.mockReset()
     getDirectRepoMock.mockReset()
+    getTriggerRuleRepoMock.mockReset()
+    getEventRepoMock.mockReset()
     getDbMock.mockReset()
     getSettingsMock.mockReset()
     getSettingsMock.mockResolvedValue({
@@ -72,6 +78,8 @@ describe('GET /api/chat-messages/poll', () => {
 
     getScheduleRepoMock.mockResolvedValue({ find: vi.fn().mockResolvedValue([dueSchedule]) })
     getDirectRepoMock.mockResolvedValue({ find: vi.fn().mockResolvedValue([]) })
+    getTriggerRuleRepoMock.mockResolvedValue({ find: vi.fn().mockResolvedValue([]) })
+    getEventRepoMock.mockResolvedValue({ findOne: vi.fn().mockResolvedValue(null) })
 
     const manager = {
       getRepository: vi.fn(() => ({ save: vi.fn().mockResolvedValue({}) })),
@@ -110,6 +118,8 @@ describe('GET /api/chat-messages/poll', () => {
 
     getScheduleRepoMock.mockResolvedValue({ find: vi.fn().mockResolvedValue([blockedSchedule]) })
     getDirectRepoMock.mockResolvedValue({ find: vi.fn().mockResolvedValue([]) })
+    getTriggerRuleRepoMock.mockResolvedValue({ find: vi.fn().mockResolvedValue([]) })
+    getEventRepoMock.mockResolvedValue({ findOne: vi.fn().mockResolvedValue(null) })
     getSettingsMock.mockResolvedValue({
       nightBlockEnabled: true,
       nightStart: '22:00',
@@ -144,6 +154,8 @@ describe('GET /api/chat-messages/poll', () => {
         },
       ]),
     })
+    getTriggerRuleRepoMock.mockResolvedValue({ find: vi.fn().mockResolvedValue([]) })
+    getEventRepoMock.mockResolvedValue({ findOne: vi.fn().mockResolvedValue(null) })
 
     const manager = {
       getRepository: vi.fn(() => ({ save: vi.fn().mockResolvedValue({}) })),
@@ -175,6 +187,8 @@ describe('GET /api/chat-messages/poll', () => {
         },
       ]),
     })
+    getTriggerRuleRepoMock.mockResolvedValue({ find: vi.fn().mockResolvedValue([]) })
+    getEventRepoMock.mockResolvedValue({ findOne: vi.fn().mockResolvedValue(null) })
 
     const manager = {
       getRepository: vi.fn(() => ({ save: vi.fn().mockResolvedValue({}) })),
@@ -208,6 +222,8 @@ describe('GET /api/chat-messages/poll', () => {
 
     getScheduleRepoMock.mockResolvedValue({ find: vi.fn().mockResolvedValue([dueSchedule]) })
     getDirectRepoMock.mockRejectedValue(new TypeError('getChatMessageDirectRepo is not a function'))
+    getTriggerRuleRepoMock.mockResolvedValue({ find: vi.fn().mockResolvedValue([]) })
+    getEventRepoMock.mockResolvedValue({ findOne: vi.fn().mockResolvedValue(null) })
 
     const manager = {
       getRepository: vi.fn(() => ({ save: vi.fn().mockResolvedValue({}) })),
@@ -222,6 +238,86 @@ describe('GET /api/chat-messages/poll', () => {
     expect(response.status).toBe(200)
     await expect(response.json()).resolves.toMatchObject({
       data: [{ id: 21, scheduleName: '스케줄 메시지', messageText: '정상 스케줄 메시지' }],
+    })
+  })
+
+  it('returns matched trigger-rule response and updates cursor', async () => {
+    process.env.KAKAO_BOT_TOKEN = 'bot-token'
+
+    getScheduleRepoMock.mockResolvedValue({ find: vi.fn().mockResolvedValue([]) })
+    getDirectRepoMock.mockResolvedValue({ find: vi.fn().mockResolvedValue([]) })
+    getTriggerRuleRepoMock.mockResolvedValue({
+      find: vi.fn().mockResolvedValue([
+        {
+          id: 11,
+          ruleName: '신청안내',
+          keyword: '신청',
+          authorName: null,
+          responseText: '신청은 /submit 에서 진행해주세요',
+          isActive: true,
+          lastMatchedEventId: 100,
+        },
+      ]),
+    })
+    getEventRepoMock.mockResolvedValue({
+      findOne: vi.fn().mockResolvedValue({ id: 101 }),
+    })
+
+    const manager = {
+      getRepository: vi.fn((target: string | { name?: string }) => {
+        if (target === 'ChatMessageTriggerRule' || (typeof target !== 'string' && target.name === 'ChatMessageTriggerRule')) {
+          return { update: vi.fn().mockResolvedValue({}) }
+        }
+        return { save: vi.fn().mockResolvedValue({}) }
+      }),
+    }
+    getDbMock.mockResolvedValue({ transaction: vi.fn(async (cb: any) => cb(manager)) })
+
+    const request = new NextRequest('http://localhost:3000/api/chat-messages/poll', {
+      headers: { authorization: 'Bearer bot-token' },
+    })
+    const response = await GET(request)
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({
+      data: [{ id: 11, scheduleName: '자동응답: 신청안내', messageText: '신청은 /submit 에서 진행해주세요' }],
+    })
+  })
+
+  it('keeps schedule payload when trigger metadata is unavailable', async () => {
+    process.env.KAKAO_BOT_TOKEN = 'bot-token'
+
+    const dueSchedule = {
+      id: 35,
+      scheduleName: '기본 스케줄',
+      messageText: '스케줄 우선 확인',
+      mode: 'interval',
+      intervalMinutes: 1,
+      fixedTime: null,
+      isActive: true,
+      createdAt: new Date('2026-04-02T08:00:00.000Z'),
+      updatedAt: new Date('2026-04-02T08:00:00.000Z'),
+      lastDispatchedAt: new Date('2026-04-02T08:00:00.000Z'),
+    }
+
+    getScheduleRepoMock.mockResolvedValue({ find: vi.fn().mockResolvedValue([dueSchedule]) })
+    getDirectRepoMock.mockResolvedValue({ find: vi.fn().mockResolvedValue([]) })
+    const metadataError = Object.assign(new Error('No metadata'), { name: 'EntityMetadataNotFoundError' })
+    getTriggerRuleRepoMock.mockRejectedValue(metadataError)
+
+    const manager = {
+      getRepository: vi.fn(() => ({ save: vi.fn().mockResolvedValue({}) })),
+    }
+    getDbMock.mockResolvedValue({ transaction: vi.fn(async (cb: any) => cb(manager)) })
+
+    const request = new NextRequest('http://localhost:3000/api/chat-messages/poll', {
+      headers: { authorization: 'Bearer bot-token' },
+    })
+    const response = await GET(request)
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({
+      data: [{ id: 35, scheduleName: '기본 스케줄', messageText: '스케줄 우선 확인' }],
     })
   })
 })

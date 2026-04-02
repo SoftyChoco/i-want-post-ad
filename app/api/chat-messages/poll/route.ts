@@ -1,15 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getChatMessageScheduleRepo, getDb } from '@/lib/db'
+import { getChatEventRepo, getChatMessageScheduleRepo, getChatMessageTriggerRuleRepo, getDb } from '@/lib/db'
 import * as dbModule from '@/lib/db'
 import { getOrCreateChatMessageSettings } from '@/lib/chat-message-settings'
 import { getExternalApiToken, hasValidExternalApiToken } from '@/lib/external-api-token'
 import { isScheduleDue, isWithinNightBlockWindow, type ChatMessageSchedule } from '@/lib/chat-message-schedule'
-import { IsNull } from 'typeorm'
+import { IsNull, Like, MoreThan } from 'typeorm'
+import { ChatMessageTriggerRule } from '@/lib/entities/ChatMessageTriggerRule'
 
 type ChatMessageDirectRow = {
   id: number
   messageText: string
   dispatchedAt: Date | null
+}
+
+type ChatMessageTriggerRuleRow = {
+  id: number
+  ruleName: string
+  keyword: string
+  authorName: string | null
+  responseText: string
+  isActive: boolean
+  lastMatchedEventId: number | null
+}
+
+type ChatEventRow = {
+  id: number
+}
+
+function isMetadataNotFoundError(error: unknown) {
+  return error instanceof Error && error.name === 'EntityMetadataNotFoundError'
 }
 
 export async function GET(request: NextRequest) {
@@ -32,7 +51,20 @@ export async function GET(request: NextRequest) {
     const repo = await getChatMessageScheduleRepo()
     const settings = await getOrCreateChatMessageSettings()
     const schedules = (await repo.find({ where: { isActive: true } })) as unknown as ChatMessageSchedule[]
+    let triggerRules: ChatMessageTriggerRuleRow[] = []
+    let eventRepo: Awaited<ReturnType<typeof getChatEventRepo>> | null = null
+    try {
+      const triggerRuleRepo = await getChatMessageTriggerRuleRepo()
+      eventRepo = await getChatEventRepo()
+      triggerRules = (await triggerRuleRepo.find({ where: { isActive: true }, order: { id: 'ASC' } })) as unknown as ChatMessageTriggerRuleRow[]
+    } catch (error) {
+      if (!isMetadataNotFoundError(error)) {
+        throw error
+      }
+      console.error('Chat message trigger rule metadata unavailable, skipping trigger rules:', error)
+    }
     let directMessages: ChatMessageDirectRow[] = []
+    const triggerMessages: Array<{ id: number; scheduleName: string; messageText: string; matchedEventId: number }> = []
 
     try {
       const maybeGetter = (dbModule as { getChatMessageDirectRepo?: unknown }).getChatMessageDirectRepo
@@ -54,11 +86,33 @@ export async function GET(request: NextRequest) {
       return isScheduleDue(schedule, now)
     })
 
-    if (dueSchedules.length > 0 || directMessages.length > 0) {
+    if (!isWithinNightBlockWindow(settings, now) && eventRepo) {
+      for (const rule of triggerRules) {
+        const event = await eventRepo.findOne({
+          where: {
+            id: rule.lastMatchedEventId ? MoreThan(rule.lastMatchedEventId) : MoreThan(0),
+            ...(rule.authorName ? { authorName: rule.authorName } : {}),
+            content: Like(`%${rule.keyword}%`),
+          },
+          order: { id: 'ASC' },
+        }) as ChatEventRow | null
+
+        if (!event) continue
+        triggerMessages.push({
+          id: rule.id,
+          scheduleName: `자동응답: ${rule.ruleName}`,
+          messageText: rule.responseText,
+          matchedEventId: event.id,
+        })
+      }
+    }
+
+    if (dueSchedules.length > 0 || directMessages.length > 0 || triggerMessages.length > 0) {
       const db = await getDb()
       await db.transaction(async (manager) => {
         const scheduleRepo = manager.getRepository('ChatMessageSchedule')
         const pendingDirectRepo = manager.getRepository('ChatMessageDirect')
+        const pendingTriggerRuleRepo = manager.getRepository(ChatMessageTriggerRule)
         for (const schedule of dueSchedules) {
           schedule.lastDispatchedAt = now
           await scheduleRepo.save(schedule)
@@ -66,6 +120,9 @@ export async function GET(request: NextRequest) {
         for (const direct of directMessages) {
           direct.dispatchedAt = now
           await pendingDirectRepo.save(direct)
+        }
+        for (const triggered of triggerMessages) {
+          await pendingTriggerRuleRepo.update({ id: triggered.id }, { lastMatchedEventId: triggered.matchedEventId })
         }
       })
     }
@@ -84,6 +141,11 @@ export async function GET(request: NextRequest) {
           messageText: schedule.messageText,
         })),
         ...directPayload,
+        ...triggerMessages.map((triggered) => ({
+          id: triggered.id,
+          scheduleName: triggered.scheduleName,
+          messageText: triggered.messageText,
+        })),
       ],
       checkedAt: now.toISOString(),
     })

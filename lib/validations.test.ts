@@ -3,12 +3,14 @@ import {
   adSubmitSchema,
   createChatEventsBulkSchema,
   createChatMessageScheduleSchema,
+  createChatMessageTriggerRuleSchema,
   createDirectChatMessageSchema,
   createModeratorSchema,
   loginSchema,
   reviewSchema,
   updateChatMessageSettingsSchema,
   updateChatMessageScheduleSchema,
+  updateChatMessageTriggerRuleSchema,
 } from '@/lib/validations'
 
 describe('loginSchema', () => {
@@ -162,5 +164,27 @@ describe('chat message schedule schemas', () => {
     ).toBe(true)
 
     expect(createChatEventsBulkSchema.safeParse({ events: [] }).success).toBe(false)
+  })
+
+  it('validates trigger rule payload and normalizes optional author name', () => {
+    const parsed = createChatMessageTriggerRuleSchema.safeParse({
+      ruleName: '  신청 안내  ',
+      keyword: '  신청  ',
+      authorName: '   ',
+      responseText: '신청은 /submit 에서 진행해주세요',
+      isActive: true,
+    })
+
+    expect(parsed.success).toBe(true)
+    if (parsed.success) {
+      expect(parsed.data.ruleName).toBe('신청 안내')
+      expect(parsed.data.keyword).toBe('신청')
+      expect(parsed.data.authorName).toBe(null)
+    }
+  })
+
+  it('requires at least one field for trigger rule update schema', () => {
+    expect(updateChatMessageTriggerRuleSchema.safeParse({}).success).toBe(false)
+    expect(updateChatMessageTriggerRuleSchema.safeParse({ isActive: false }).success).toBe(true)
   })
 })

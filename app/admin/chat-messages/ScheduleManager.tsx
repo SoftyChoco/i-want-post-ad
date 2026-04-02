@@ -19,21 +19,35 @@ type Settings = {
   nightEnd: string | null
 }
 
-type TabKey = 'direct' | 'schedule' | 'night'
+type TriggerRuleItem = {
+  id: number
+  ruleName: string
+  keyword: string
+  authorName: string | null
+  responseText: string
+  isActive: boolean
+  lastMatchedEventId: number | null
+}
+
+type TabKey = 'direct' | 'schedule' | 'trigger' | 'night'
 
 export default function ScheduleManager({
   initialSchedules,
   initialSettings,
+  initialTriggerRules,
 }: {
   initialSchedules: ScheduleItem[]
   initialSettings: Settings
+  initialTriggerRules: TriggerRuleItem[]
 }) {
   const router = useRouter()
   const [schedules, setSchedules] = useState<ScheduleItem[]>(initialSchedules)
   const [createLoading, setCreateLoading] = useState(false)
   const [directLoading, setDirectLoading] = useState(false)
+  const [createRuleLoading, setCreateRuleLoading] = useState(false)
   const [settingsSaving, setSettingsSaving] = useState(false)
   const [savingScheduleId, setSavingScheduleId] = useState<number | null>(null)
+  const [savingRuleId, setSavingRuleId] = useState<number | null>(null)
   const [activeTab, setActiveTab] = useState<TabKey>('direct')
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
@@ -51,16 +65,28 @@ export default function ScheduleManager({
     isActive: true,
   })
   const [directMessageText, setDirectMessageText] = useState('')
+  const [triggerRules, setTriggerRules] = useState<TriggerRuleItem[]>(initialTriggerRules)
+  const [ruleForm, setRuleForm] = useState({
+    ruleName: '',
+    keyword: '',
+    authorName: '',
+    responseText: '',
+    isActive: true,
+  })
 
   async function refreshSchedules() {
-    const [schedulesRes, settingsRes] = await Promise.all([
+    const [schedulesRes, settingsRes, rulesRes] = await Promise.all([
       fetch('/api/admin/chat-messages', { credentials: 'include' }),
       fetch('/api/admin/chat-messages/settings', { credentials: 'include' }),
+      fetch('/api/admin/chat-messages/rules', { credentials: 'include' }),
     ])
     const schedulesData = await schedulesRes.json()
     const settingsData = await settingsRes.json()
-    if (schedulesRes.ok && settingsRes.ok) {
+    const rulesData = await rulesRes.json()
+    const isRuleFeatureUnavailable = rulesRes.status === 503 && rulesData?.error?.code === 'FEATURE_UNAVAILABLE'
+    if (schedulesRes.ok && settingsRes.ok && (rulesRes.ok || isRuleFeatureUnavailable)) {
       setSchedules(schedulesData.data)
+      setTriggerRules(rulesRes.ok ? rulesData.data : [])
       setSettings({
         nightBlockEnabled: settingsData.data.nightBlockEnabled,
         nightStart: settingsData.data.nightStart || '22:00',
@@ -69,7 +95,7 @@ export default function ScheduleManager({
       router.refresh()
       return
     }
-    throw new Error(schedulesData.error?.message || settingsData.error?.message || '새로고침에 실패했습니다')
+    throw new Error(schedulesData.error?.message || settingsData.error?.message || rulesData?.error?.message || '새로고침에 실패했습니다')
   }
 
   async function saveSettings() {
@@ -153,6 +179,42 @@ export default function ScheduleManager({
     }
   }
 
+  async function createTriggerRule(e: React.FormEvent) {
+    e.preventDefault()
+    setError(null)
+    setNotice(null)
+    setCreateRuleLoading(true)
+    try {
+      const res = await fetch('/api/admin/chat-messages/rules', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          ruleName: ruleForm.ruleName,
+          keyword: ruleForm.keyword,
+          authorName: ruleForm.authorName || null,
+          responseText: ruleForm.responseText,
+          isActive: ruleForm.isActive,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error?.message || '자동응답 룰 생성에 실패했습니다')
+      await refreshSchedules()
+      setRuleForm({
+        ruleName: '',
+        keyword: '',
+        authorName: '',
+        responseText: '',
+        isActive: true,
+      })
+      setNotice('자동응답 룰을 생성했습니다.')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '자동응답 룰 생성에 실패했습니다')
+    } finally {
+      setCreateRuleLoading(false)
+    }
+  }
+
   async function updateSchedule(item: ScheduleItem, patch: Partial<ScheduleItem>) {
     setError(null)
     setNotice(null)
@@ -201,6 +263,52 @@ export default function ScheduleManager({
     }
   }
 
+  async function updateTriggerRule(item: TriggerRuleItem) {
+    setError(null)
+    setNotice(null)
+    setSavingRuleId(item.id)
+    try {
+      const res = await fetch(`/api/admin/chat-messages/rules/${item.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          ruleName: item.ruleName,
+          keyword: item.keyword,
+          authorName: item.authorName,
+          responseText: item.responseText,
+          isActive: item.isActive,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error?.message || '자동응답 룰 수정에 실패했습니다')
+      await refreshSchedules()
+      setNotice('자동응답 룰을 저장했습니다.')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '자동응답 룰 수정에 실패했습니다')
+    } finally {
+      setSavingRuleId(null)
+    }
+  }
+
+  async function deleteTriggerRule(item: TriggerRuleItem) {
+    if (!window.confirm('해당 자동응답 룰을 삭제하시겠습니까?')) return
+    setError(null)
+    setNotice(null)
+    try {
+      const res = await fetch(`/api/admin/chat-messages/rules/${item.id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error?.message || '자동응답 룰 삭제에 실패했습니다')
+      await refreshSchedules()
+      setNotice('자동응답 룰을 삭제했습니다.')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '자동응답 룰 삭제에 실패했습니다')
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex gap-2 border-b border-gray-200">
@@ -230,6 +338,15 @@ export default function ScheduleManager({
           }`}
         >
           공통 야간 차단 설정
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('trigger')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
+            activeTab === 'trigger' ? 'border-emerald-500 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          키워드 자동응답 룰
         </button>
       </div>
 
@@ -470,6 +587,157 @@ export default function ScheduleManager({
             </div>
           </section>
         ))}
+      </div>
+      )}
+
+      {activeTab === 'trigger' && (
+      <div className="space-y-4">
+        <form onSubmit={createTriggerRule} className="bg-white border border-gray-200 rounded-lg p-5 space-y-4">
+          <h2 className="text-lg font-semibold text-gray-900">자동응답 룰 생성</h2>
+          <p className="text-sm text-gray-600">최신 수집 채팅에서 키워드 또는 작성자+키워드가 일치하면 응답 메시지를 발송합니다.</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm text-gray-700 mb-1">룰 이름</label>
+              <input
+                type="text"
+                value={ruleForm.ruleName}
+                onChange={(e) => setRuleForm((prev) => ({ ...prev, ruleName: e.target.value }))}
+                required
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                placeholder="예: 문의 자동안내"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-700 mb-1">키워드</label>
+              <input
+                type="text"
+                value={ruleForm.keyword}
+                onChange={(e) => setRuleForm((prev) => ({ ...prev, keyword: e.target.value }))}
+                required
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                placeholder="예: 신청방법"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm text-gray-700 mb-1">특정 작성자 (선택)</label>
+            <input
+              type="text"
+              value={ruleForm.authorName}
+              onChange={(e) => setRuleForm((prev) => ({ ...prev, authorName: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+              placeholder="비우면 전체 작성자 대상"
+            />
+          </div>
+          <div>
+            <label className="block text-sm text-gray-700 mb-1">응답 메시지</label>
+            <textarea
+              value={ruleForm.responseText}
+              onChange={(e) => setRuleForm((prev) => ({ ...prev, responseText: e.target.value }))}
+              rows={3}
+              required
+              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+            />
+          </div>
+          <label className="flex items-center gap-2 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              checked={ruleForm.isActive}
+              onChange={(e) => setRuleForm((prev) => ({ ...prev, isActive: e.target.checked }))}
+            />
+            활성화
+          </label>
+          <div className="flex justify-end">
+            <button
+              type="submit"
+              disabled={createRuleLoading}
+              className="px-4 py-2 bg-emerald-600 text-white rounded-md text-sm disabled:opacity-50"
+            >
+              {createRuleLoading ? '생성중...' : '자동응답 룰 생성'}
+            </button>
+          </div>
+        </form>
+
+        <div className="space-y-3">
+          {triggerRules.length === 0 ? (
+            <div className="text-sm text-gray-500 py-4">등록된 자동응답 룰이 없습니다.</div>
+          ) : triggerRules.map((rule) => (
+            <section key={rule.id} className="bg-white border border-gray-200 rounded-lg p-4 space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <input
+                  type="text"
+                  value={rule.ruleName}
+                  onChange={(e) =>
+                    setTriggerRules((prev) => prev.map((r) => (r.id === rule.id ? { ...r, ruleName: e.target.value } : r)))
+                  }
+                  className="text-base font-semibold text-gray-900 border border-gray-300 rounded px-2 py-1"
+                />
+                <button onClick={() => deleteTriggerRule(rule)} className="text-xs text-red-600 hover:underline">삭제</button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">키워드</label>
+                  <input
+                    type="text"
+                    value={rule.keyword}
+                    onChange={(e) =>
+                      setTriggerRules((prev) => prev.map((r) => (r.id === rule.id ? { ...r, keyword: e.target.value } : r)))
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">특정 작성자 (선택)</label>
+                  <input
+                    type="text"
+                    value={rule.authorName || ''}
+                    onChange={(e) =>
+                      setTriggerRules((prev) => prev.map((r) => (r.id === rule.id ? { ...r, authorName: e.target.value || null } : r)))
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                    placeholder="비우면 전체"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">응답 메시지</label>
+                <textarea
+                  value={rule.responseText}
+                  onChange={(e) =>
+                    setTriggerRules((prev) => prev.map((r) => (r.id === rule.id ? { ...r, responseText: e.target.value } : r)))
+                  }
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <label className="flex items-center gap-2 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={rule.isActive}
+                    onChange={(e) =>
+                      setTriggerRules((prev) => prev.map((r) => (r.id === rule.id ? { ...r, isActive: e.target.checked } : r)))
+                    }
+                  />
+                  활성화
+                </label>
+                <span className="text-xs text-gray-500">
+                  마지막 매칭 이벤트 ID: {rule.lastMatchedEventId ?? '-'}
+                </span>
+              </div>
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => updateTriggerRule(rule)}
+                  disabled={savingRuleId === rule.id}
+                  className="px-3 py-1.5 bg-gray-900 text-white rounded text-sm disabled:opacity-50"
+                >
+                  {savingRuleId === rule.id ? '저장중...' : '저장'}
+                </button>
+              </div>
+            </section>
+          ))}
+        </div>
       </div>
       )}
     </div>

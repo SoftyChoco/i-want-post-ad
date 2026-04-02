@@ -93,6 +93,26 @@ export const createDirectChatMessageSchema = z.object({
   messageText: z.string().min(1, '메시지 내용을 입력해주세요').max(1000),
 })
 
+const triggerRuleBaseSchema = z.object({
+  ruleName: z.string().min(1, '룰 이름을 입력해주세요').max(100),
+  keyword: z.string().min(1, '키워드를 입력해주세요').max(100),
+  authorName: z.string().max(100).nullable().optional(),
+  responseText: z.string().min(1, '응답 메시지를 입력해주세요').max(1000),
+  isActive: z.boolean(),
+})
+
+export const createChatMessageTriggerRuleSchema = triggerRuleBaseSchema.transform((value) => ({
+  ...value,
+  keyword: value.keyword.trim(),
+  authorName: value.authorName?.trim() ? value.authorName.trim() : null,
+  ruleName: value.ruleName.trim(),
+}))
+
+export const updateChatMessageTriggerRuleSchema = triggerRuleBaseSchema.partial().refine(
+  (value) => Object.keys(value).length > 0,
+  { message: '최소 한 개 이상의 수정 필드가 필요합니다' }
+)
+
 const chatEventSchema = z.object({
   observedAt: z.string().datetime('observedAt 형식이 올바르지 않습니다'),
   authorName: z.string().min(1, 'authorName을 입력해주세요').max(100),

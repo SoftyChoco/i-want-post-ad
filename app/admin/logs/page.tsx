@@ -27,6 +27,9 @@ const actionBadge: Record<string, { label: string; color: string }> = {
   update_chat_schedule: { label: '채팅 스케줄 수정', color: 'bg-cyan-100 text-cyan-800' },
   delete_chat_schedule: { label: '채팅 스케줄 삭제', color: 'bg-rose-100 text-rose-800' },
   create_chat_direct: { label: '직접 메시지 작성', color: 'bg-indigo-100 text-indigo-800' },
+  create_chat_trigger_rule: { label: '자동응답 룰 생성', color: 'bg-emerald-100 text-emerald-800' },
+  update_chat_trigger_rule: { label: '자동응답 룰 수정', color: 'bg-teal-100 text-teal-800' },
+  delete_chat_trigger_rule: { label: '자동응답 룰 삭제', color: 'bg-amber-100 text-amber-800' },
 }
 
 export default async function LogsPage({

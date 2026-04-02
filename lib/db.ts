@@ -11,6 +11,7 @@ import { ChatMessageSettings } from './entities/ChatMessageSettings';
 import { ChatMessageDirect } from './entities/ChatMessageDirect';
 import { ChatEventBatch } from './entities/ChatEventBatch';
 import { ChatEvent } from './entities/ChatEvent';
+import { ChatMessageTriggerRule } from './entities/ChatMessageTriggerRule';
 import { mkdirSync } from 'fs';
 
 mkdirSync(path.resolve(process.cwd(), 'data'), { recursive: true });
@@ -31,6 +32,7 @@ const AppDataSource = globalThis.__db__ || new DataSource({
     ChatMessageDirect,
     ChatEventBatch,
     ChatEvent,
+    ChatMessageTriggerRule,
   ],
   synchronize: process.env.NODE_ENV !== 'production',
   logging: process.env.NODE_ENV === 'development' ? ['query', 'error'] : ['error'],
@@ -102,6 +104,11 @@ export async function getChatEventBatchRepo() {
 export async function getChatEventRepo() {
   const db = await getDb();
   return db.getRepository('ChatEvent');
+}
+
+export async function getChatMessageTriggerRuleRepo() {
+  const db = await getDb();
+  return db.getRepository(ChatMessageTriggerRule);
 }
 
 export { AppDataSource };
