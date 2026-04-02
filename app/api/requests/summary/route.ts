@@ -6,7 +6,7 @@ export async function GET(request: NextRequest) {
   const externalToken = getExternalApiToken()
   if (!externalToken) {
     return NextResponse.json(
-      { error: { code: 'MISCONFIGURED', message: 'EXTERNAL_API_TOKEN is not configured' } },
+      { error: { code: 'MISCONFIGURED', message: 'KAKAO_BOT_TOKEN is not configured' } },
       { status: 500 }
     )
   }

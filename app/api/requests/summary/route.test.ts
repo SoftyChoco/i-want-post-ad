@@ -13,7 +13,6 @@ import { GET } from '@/app/api/requests/summary/route'
 
 describe('GET /api/requests/summary', () => {
   beforeEach(() => {
-    delete process.env.EXTERNAL_API_TOKEN
     delete process.env.KAKAO_BOT_TOKEN
     getAdRequestRepoMock.mockReset()
   })
@@ -24,12 +23,12 @@ describe('GET /api/requests/summary', () => {
 
     expect(response.status).toBe(500)
     await expect(response.json()).resolves.toEqual({
-      error: { code: 'MISCONFIGURED', message: 'EXTERNAL_API_TOKEN is not configured' },
+      error: { code: 'MISCONFIGURED', message: 'KAKAO_BOT_TOKEN is not configured' },
     })
   })
 
   it('returns 403 when token is invalid', async () => {
-    process.env.EXTERNAL_API_TOKEN = 'external-token'
+    process.env.KAKAO_BOT_TOKEN = 'bot-token'
     const request = new NextRequest('http://localhost:3000/api/requests/summary', {
       headers: { authorization: 'Bearer wrong-token' },
     })
@@ -39,7 +38,7 @@ describe('GET /api/requests/summary', () => {
   })
 
   it('returns pending and status summary when token is valid', async () => {
-    process.env.EXTERNAL_API_TOKEN = 'external-token'
+    process.env.KAKAO_BOT_TOKEN = 'bot-token'
     const countByMock = vi
       .fn()
       .mockResolvedValueOnce(2)
@@ -48,7 +47,7 @@ describe('GET /api/requests/summary', () => {
     getAdRequestRepoMock.mockResolvedValue({ countBy: countByMock })
 
     const request = new NextRequest('http://localhost:3000/api/requests/summary', {
-      headers: { authorization: 'Bearer external-token' },
+      headers: { authorization: 'Bearer bot-token' },
     })
     const response = await GET(request)
 
@@ -62,19 +61,5 @@ describe('GET /api/requests/summary', () => {
         rejected: 3,
       },
     })
-  })
-
-  it('supports legacy KAKAO_BOT_TOKEN as fallback', async () => {
-    process.env.KAKAO_BOT_TOKEN = 'legacy-token'
-    getAdRequestRepoMock.mockResolvedValue({
-      countBy: vi.fn().mockResolvedValue(0),
-    })
-
-    const request = new NextRequest('http://localhost:3000/api/requests/summary', {
-      headers: { authorization: 'Bearer legacy-token' },
-    })
-    const response = await GET(request)
-
-    expect(response.status).toBe(200)
   })
 })

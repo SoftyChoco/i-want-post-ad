@@ -54,7 +54,7 @@
 - **관리자 최종 승인**: 방장·부방장이 AI 판정을 참고하여 최종 승인/거절
 - **신청 내역 조회**: 연락처(이메일/전화번호) 또는 요청코드로 내 광고 신청 상태 확인
 - **감사 로그**: 누가 언제 어떤 요청을 승인/거절했는지 전체 이력 추적 (방장 및 부방장 조회 가능)
-- **Rate Limiting**: IP 기반 요청 제한 (제출 5회/10분, 로그인 5회/5분, 조회 30회/분)
+- **Rate Limiting**: IP 기반 요청 제한 (제출 5회/10분, 로그인 10회/5분, 코드검증 30회/분, 공개조회 5회/분, 관리자 읽기 15회/분)
 
 ---
 
@@ -62,7 +62,7 @@
 
 | 분류 | 기술 |
 |------|------|
-| 프레임워크 | Next.js 15 (App Router) |
+| 프레임워크 | Next.js 16 (App Router) |
 | ORM | TypeORM |
 | 데이터베이스 | SQLite (better-sqlite3) |
 | AI | Gemini (환경변수로 모델 지정) |
@@ -96,7 +96,7 @@ cp .env.example .env
 DATABASE_URL=./data/db.sqlite
 JWT_SECRET=your-jwt-secret-change-in-production-min-32-chars
 GEMINI_API_KEY=your-gemini-api-key
-GEMINI_MODEL=gemini-2.0-flash
+GEMINI_MODEL=gemini-3.1-flash-lite-preview
 ADMIN_EMAIL=admin@example.com
 ADMIN_PASSWORD=your-secure-password
 ```
@@ -262,7 +262,7 @@ ad-approval/
 ├── lib/
 │   ├── db.ts                            # TypeORM DataSource 싱글턴
 │   ├── auth.ts                          # JWT + bcrypt 인증
-│   ├── llm.ts                           # Gemini 2.5 Flash 연동
+│   ├── llm.ts                           # Gemini 연동
 │   ├── rate-limit.ts                    # IP 기반 Rate Limiter
 │   ├── validations.ts                   # Zod 스키마
 │   ├── codes.ts                         # 요청코드(REQ-) 생성기
@@ -374,8 +374,7 @@ server {
 | `GEMINI_API_KEY` | O | Google Gemini API 키. AI 판정 기능에 필요 |
 | `ADMIN_EMAIL` | O | 초기 관리자(방장) 계정 이메일. `db:seed` 실행 시 사용 |
 | `ADMIN_PASSWORD` | O | 초기 관리자(방장) 계정 비밀번호. `db:seed` 실행 시 사용 |
-| `EXTERNAL_API_TOKEN` | X | 외부 연동용 Bearer 토큰 (`/api/verify`, `/api/requests/summary`) |
-| `KAKAO_BOT_TOKEN` | X | 하위호환 토큰(미설정 시 `EXTERNAL_API_TOKEN` 우선, 없으면 fallback) |
+| `KAKAO_BOT_TOKEN` | X | 외부 연동용 Bearer 토큰 (`/api/verify`, `/api/requests/summary`) |
 
 ---
 

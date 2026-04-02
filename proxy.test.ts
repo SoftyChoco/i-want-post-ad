@@ -61,14 +61,13 @@ describe('proxy matcher', () => {
 describe('proxy behavior', () => {
   beforeEach(() => {
     process.env.JWT_SECRET = '01234567890123456789012345678901'
-    process.env.EXTERNAL_API_TOKEN = 'external-token'
-    delete process.env.KAKAO_BOT_TOKEN
+    process.env.KAKAO_BOT_TOKEN = 'bot-token'
     jwtVerifyMock.mockReset()
   })
 
   afterEach(() => {
     delete process.env.JWT_SECRET
-    delete process.env.EXTERNAL_API_TOKEN
+    delete process.env.KAKAO_BOT_TOKEN
   })
 
   it('blocks direct api calls without same-origin headers', async () => {
@@ -94,11 +93,11 @@ describe('proxy behavior', () => {
     expect(response.status).toBe(200)
   })
 
-  it('allows direct /api/verify when external token is valid', async () => {
+  it('allows direct /api/verify when bot token is valid', async () => {
     const request = new NextRequest('http://localhost:3000/api/verify?requestCode=REQ-20260329-ABCD', {
       headers: {
         host: 'localhost:3000',
-        authorization: 'Bearer external-token',
+        authorization: 'Bearer bot-token',
       },
     })
 
@@ -107,7 +106,7 @@ describe('proxy behavior', () => {
     expect(response.status).toBe(200)
   })
 
-  it('still blocks direct /api/verify without external token', async () => {
+  it('still blocks direct /api/verify without bot token', async () => {
     const request = new NextRequest('http://localhost:3000/api/verify?requestCode=REQ-20260329-ABCD', {
       headers: { host: 'localhost:3000' },
     })
@@ -117,11 +116,11 @@ describe('proxy behavior', () => {
     expect(response.status).toBe(403)
   })
 
-  it('allows direct /api/requests/summary when external token is valid', async () => {
+  it('allows direct /api/requests/summary when bot token is valid', async () => {
     const request = new NextRequest('http://localhost:3000/api/requests/summary', {
       headers: {
         host: 'localhost:3000',
-        authorization: 'Bearer external-token',
+        authorization: 'Bearer bot-token',
       },
     })
 
@@ -130,8 +129,31 @@ describe('proxy behavior', () => {
     expect(response.status).toBe(200)
   })
 
-  it('still blocks direct /api/requests/summary without external token', async () => {
+  it('still blocks direct /api/requests/summary without bot token', async () => {
     const request = new NextRequest('http://localhost:3000/api/requests/summary', {
+      headers: { host: 'localhost:3000' },
+    })
+
+    const response = await proxy(request)
+
+    expect(response.status).toBe(403)
+  })
+
+  it('allows direct /api/chat-messages/poll when bot token is valid', async () => {
+    const request = new NextRequest('http://localhost:3000/api/chat-messages/poll', {
+      headers: {
+        host: 'localhost:3000',
+        authorization: 'Bearer bot-token',
+      },
+    })
+
+    const response = await proxy(request)
+
+    expect(response.status).toBe(200)
+  })
+
+  it('still blocks direct /api/chat-messages/poll without bot token', async () => {
+    const request = new NextRequest('http://localhost:3000/api/chat-messages/poll', {
       headers: { host: 'localhost:3000' },
     })
 

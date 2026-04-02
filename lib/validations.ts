@@ -43,3 +43,48 @@ export const changePasswordSchema = z.object({
   message: '새 비밀번호는 현재 비밀번호와 달라야 합니다',
   path: ['newPassword'],
 })
+
+const scheduleModeSchema = z.enum(['interval', 'fixed_time'])
+const hhmmSchema = z.string().regex(/^\d{2}:\d{2}$/, '시간 형식은 HH:MM 이어야 합니다')
+
+const chatMessageScheduleBaseSchema = z.object({
+  scheduleName: z.string().min(1, '스케줄 이름을 입력해주세요').max(100),
+  messageText: z.string().min(1, '메시지 내용을 입력해주세요').max(1000),
+  mode: scheduleModeSchema,
+  intervalMinutes: z.number().int().min(1).max(1440).nullable().optional(),
+  fixedTime: hhmmSchema.nullable().optional(),
+  isActive: z.boolean(),
+})
+
+export const createChatMessageScheduleSchema = chatMessageScheduleBaseSchema.superRefine((value, ctx) => {
+  if (value.mode === 'interval') {
+    if (!value.intervalMinutes) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['intervalMinutes'], message: '반복 간격(분)을 입력해주세요' })
+    }
+  } else if (!value.fixedTime) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['fixedTime'], message: '실행 시간을 입력해주세요' })
+  }
+
+})
+
+export const updateChatMessageScheduleSchema = chatMessageScheduleBaseSchema.partial().refine(
+  (value) => Object.keys(value).length > 0,
+  { message: '최소 한 개 이상의 수정 필드가 필요합니다' }
+)
+
+export const updateChatMessageSettingsSchema = z.object({
+  nightBlockEnabled: z.boolean(),
+  nightStart: hhmmSchema.nullable().optional(),
+  nightEnd: hhmmSchema.nullable().optional(),
+}).superRefine((value, ctx) => {
+  if (!value.nightBlockEnabled) return
+  if (!value.nightStart) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['nightStart'], message: '야간 시작 시간을 입력해주세요' })
+  }
+  if (!value.nightEnd) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['nightEnd'], message: '야간 종료 시간을 입력해주세요' })
+  }
+  if (value.nightStart && value.nightEnd && value.nightStart === value.nightEnd) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['nightEnd'], message: '야간 시작/종료 시간은 달라야 합니다' })
+  }
+})

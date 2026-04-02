@@ -13,6 +13,9 @@ const actionBadge: Record<string, { label: string; color: string }> = {
   delete_mod: { label: '부방장 삭제', color: 'bg-gray-100 text-gray-600' },
   reset_mod_password: { label: '부방장 비밀번호 초기화', color: 'bg-orange-100 text-orange-800' },
   change_password: { label: '비밀번호 변경', color: 'bg-violet-100 text-violet-800' },
+  create_chat_schedule: { label: '채팅 스케줄 생성', color: 'bg-sky-100 text-sky-800' },
+  update_chat_schedule: { label: '채팅 스케줄 수정', color: 'bg-cyan-100 text-cyan-800' },
+  delete_chat_schedule: { label: '채팅 스케줄 삭제', color: 'bg-rose-100 text-rose-800' },
 }
 
 export default async function LogsPage({

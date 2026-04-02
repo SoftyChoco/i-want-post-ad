@@ -20,8 +20,7 @@ import { GET } from '@/app/api/verify/route'
 
 describe('GET /api/verify', () => {
   beforeEach(() => {
-    process.env.EXTERNAL_API_TOKEN = 'external-token'
-    delete process.env.KAKAO_BOT_TOKEN
+    process.env.KAKAO_BOT_TOKEN = 'bot-token'
     checkRateLimitMock.mockReset()
     getClientIpMock.mockReset()
     getClientIpMock.mockReturnValue('127.0.0.1')
@@ -32,7 +31,7 @@ describe('GET /api/verify', () => {
   })
 
   afterEach(() => {
-    delete process.env.EXTERNAL_API_TOKEN
+    delete process.env.KAKAO_BOT_TOKEN
     vi.useRealTimers()
   })
 
@@ -92,7 +91,7 @@ describe('GET /api/verify', () => {
     getAdRequestRepoMock.mockResolvedValue({ findOne: findOneMock })
 
     const request = new NextRequest('http://localhost:3000/api/verify?requestCode=REQ-20260327-ABCD', {
-      headers: { authorization: 'Bearer external-token' },
+      headers: { authorization: 'Bearer bot-token' },
     })
     const response = await GET(request)
 
@@ -117,7 +116,7 @@ describe('GET /api/verify', () => {
     getAdRequestRepoMock.mockResolvedValue({ findOne: findOneMock })
 
     const request = new NextRequest('http://localhost:3000/api/verify?requestCode=REQ-20260327-ABCD', {
-      headers: { authorization: 'Bearer external-token' },
+      headers: { authorization: 'Bearer bot-token' },
     })
     const response = await GET(request)
 
@@ -141,7 +140,7 @@ describe('GET /api/verify', () => {
     getAdRequestRepoMock.mockResolvedValue({ findOne: findOneMock })
 
     const request = new NextRequest('http://localhost:3000/api/verify?requestCode=REQ-20260327-ABCD', {
-      headers: { authorization: 'Bearer external-token' },
+      headers: { authorization: 'Bearer bot-token' },
     })
     const response = await GET(request)
 

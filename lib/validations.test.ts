@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { adSubmitSchema, createModeratorSchema, loginSchema, reviewSchema } from '@/lib/validations'
+import {
+  adSubmitSchema,
+  createChatMessageScheduleSchema,
+  createModeratorSchema,
+  loginSchema,
+  reviewSchema,
+  updateChatMessageSettingsSchema,
+  updateChatMessageScheduleSchema,
+} from '@/lib/validations'
 
 describe('loginSchema', () => {
   it('accepts valid credentials and rejects invalid email', () => {
@@ -62,6 +70,73 @@ describe('createModeratorSchema', () => {
       createModeratorSchema.safeParse({
         email: 'not-email',
         name: 'mod',
+      }).success
+    ).toBe(false)
+  })
+})
+
+describe('chat message schedule schemas', () => {
+  it('validates interval mode requires intervalMinutes', () => {
+    expect(
+      createChatMessageScheduleSchema.safeParse({
+        scheduleName: '공지 스케줄',
+        messageText: '공지',
+        mode: 'interval',
+        intervalMinutes: 30,
+        isActive: true,
+      }).success
+    ).toBe(true)
+
+    expect(
+      createChatMessageScheduleSchema.safeParse({
+        scheduleName: '공지 스케줄',
+        messageText: '공지',
+        mode: 'interval',
+        isActive: true,
+      }).success
+    ).toBe(false)
+  })
+
+  it('validates fixed_time mode requires fixedTime', () => {
+    expect(
+      createChatMessageScheduleSchema.safeParse({
+        scheduleName: '아침 인사 스케줄',
+        messageText: '좋은 아침',
+        mode: 'fixed_time',
+        fixedTime: '08:30',
+        isActive: true,
+      }).success
+    ).toBe(true)
+
+    expect(
+      createChatMessageScheduleSchema.safeParse({
+        scheduleName: '아침 인사 스케줄',
+        messageText: '좋은 아침',
+        mode: 'fixed_time',
+        isActive: true,
+      }).success
+    ).toBe(false)
+  })
+
+  it('requires at least one field for update schema', () => {
+    expect(updateChatMessageScheduleSchema.safeParse({}).success).toBe(false)
+    expect(updateChatMessageScheduleSchema.safeParse({ isActive: false }).success).toBe(true)
+  })
+
+  it('validates common night settings payload', () => {
+    expect(
+      updateChatMessageSettingsSchema.safeParse({
+        nightBlockEnabled: true,
+        nightStart: '22:00',
+        nightEnd: '07:00',
+      }).success
+    ).toBe(true)
+
+    expect(
+      updateChatMessageSettingsSchema.safeParse({
+        nightBlockEnabled: true,
+        nightStart: null,
+        nightEnd: '07:00',
       }).success
     ).toBe(false)
   })
