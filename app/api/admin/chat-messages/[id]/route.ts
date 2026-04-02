@@ -90,7 +90,7 @@ export async function PATCH(
     current.fixedTime = mergedValidation.data.mode === 'fixed_time' ? (mergedValidation.data.fixedTime || null) : null
     current.isActive = mergedValidation.data.isActive
 
-    let updated: Record<string, unknown> | null = null
+    let updated: { id?: number } | null = null
     const db = await getDb()
     await db.transaction(async (manager) => {
       updated = await manager.save('ChatMessageSchedule', current)

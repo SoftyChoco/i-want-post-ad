@@ -5,6 +5,8 @@ import { judgeAdContent } from '@/lib/llm'
 import { recoverStaleLlmProcessing } from '@/lib/llm-status'
 import { getPolicyVersion } from '@/lib/policy'
 import { getActorFromHeaders } from '@/lib/request-actor'
+import { AdRequest } from '@/lib/entities/AdRequest'
+import { AuditLog } from '@/lib/entities/AuditLog'
 
 const REJUDGE_PROCESSING_MESSAGE = '재판정 진행중입니다. 최대 1분 내 결과가 반영됩니다.'
 
@@ -30,7 +32,7 @@ async function runAsyncRejudge(input: {
 
     const db = await getDb()
     await db.transaction(async (manager) => {
-      await manager.getRepository('AdRequest').update(
+      await manager.getRepository(AdRequest).update(
         { id: input.requestId, llmStatus: 'processing', llmAttemptId: input.llmAttemptId },
         {
           llmVerdict: judgment.verdict,
@@ -43,7 +45,7 @@ async function runAsyncRejudge(input: {
         }
       )
 
-      const log = manager.getRepository('AuditLog').create({
+      const log = manager.getRepository(AuditLog).create({
         action: 'rejudge',
         targetType: 'ad_request',
         targetId: input.requestId,
@@ -58,14 +60,14 @@ async function runAsyncRejudge(input: {
           nextReason: judgment.reason,
         }),
       })
-      await manager.save('AuditLog', log)
+      await manager.save(AuditLog, log)
     })
   } catch (error: unknown) {
     const policyVersion = await getPolicyVersion()
     const message = error instanceof Error ? error.message : 'LLM 재판정 실패'
     const db = await getDb()
     await db.transaction(async (manager) => {
-      await manager.getRepository('AdRequest').update(
+      await manager.getRepository(AdRequest).update(
         { id: input.requestId, llmStatus: 'processing', llmAttemptId: input.llmAttemptId },
         {
           llmVerdict: 'error',
@@ -78,7 +80,7 @@ async function runAsyncRejudge(input: {
         }
       )
 
-      const log = manager.getRepository('AuditLog').create({
+      const log = manager.getRepository(AuditLog).create({
         action: 'rejudge',
         targetType: 'ad_request',
         targetId: input.requestId,
@@ -92,7 +94,7 @@ async function runAsyncRejudge(input: {
           error: message,
         }),
       })
-      await manager.save('AuditLog', log)
+      await manager.save(AuditLog, log)
     })
   }
 }
@@ -147,9 +149,9 @@ export async function POST(
       adRequest.llmStatus = 'processing'
       adRequest.llmAttemptId = llmAttemptId
       adRequest.policyVersion = policyVersion
-      await manager.save('AdRequest', adRequest)
+      await manager.save(AdRequest, adRequest)
 
-      const log = manager.getRepository('AuditLog').create({
+      const log = manager.getRepository(AuditLog).create({
         action: 'rejudge',
         targetType: 'ad_request',
         targetId: adRequest.id,
@@ -162,7 +164,7 @@ export async function POST(
           previousReason,
         }),
       })
-      await manager.save('AuditLog', log)
+      await manager.save(AuditLog, log)
     })
 
     void runAsyncRejudge({

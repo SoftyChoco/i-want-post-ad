@@ -61,7 +61,7 @@ export default async function AdminChatMessagesPage() {
           id: s.id,
           scheduleName: s.scheduleName,
           messageText: s.messageText,
-          mode: s.mode,
+          mode: s.mode as 'interval' | 'fixed_time',
           intervalMinutes: s.intervalMinutes,
           fixedTime: s.fixedTime,
           isActive: s.isActive,

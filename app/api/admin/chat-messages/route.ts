@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    let created: Record<string, unknown> | null = null
+    let created: { id?: number } | null = null
     const db = await getDb()
     await db.transaction(async (manager) => {
       const scheduleRepo = manager.getRepository('ChatMessageSchedule')
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
       const log = logRepo.create({
         action: 'create_chat_schedule',
         targetType: 'chat_message_schedule',
-        targetId: Number((created as { id?: number }).id || 0),
+        targetId: Number(created?.id || 0),
         actorId: actor.userId,
         actorName: actor.name,
         details: JSON.stringify({

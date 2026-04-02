@@ -4,6 +4,8 @@ import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
 import { reviewSchema } from '@/lib/validations'
 import { getRequestCodeExpiryAt, isRequestCodeExpired } from '@/lib/request-code-expiry'
 import { getActorFromHeaders } from '@/lib/request-actor'
+import { AdRequest } from '@/lib/entities/AdRequest'
+import { AuditLog } from '@/lib/entities/AuditLog'
 
 function stripUser(user: any) {
   if (!user) return null
@@ -99,9 +101,9 @@ export async function PATCH(
       adRequest.adminReason = parsed.data.reason
       adRequest.reviewedBy = { id: userId } as any
       adRequest.reviewedAt = new Date()
-      await manager.save('AdRequest', adRequest)
+      await manager.save(AdRequest, adRequest)
 
-      const log = manager.getRepository('AuditLog').create({
+      const log = manager.getRepository(AuditLog).create({
         action: parsed.data.status === 'approved' ? 'approve' : 'reject',
         targetType: 'ad_request',
         targetId: adRequest.id,
@@ -113,7 +115,7 @@ export async function PATCH(
           reason: parsed.data.reason,
         }),
       })
-      await manager.save('AuditLog', log)
+      await manager.save(AuditLog, log)
     })
 
     const updated = await repo.findOne({

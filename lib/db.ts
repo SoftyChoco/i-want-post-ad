@@ -58,52 +58,52 @@ export async function getDb(): Promise<DataSource> {
 
 export async function getUserRepo() {
   const db = await getDb();
-  return db.getRepository('User');
+  return db.getRepository(User);
 }
 
 export async function getAdRequestRepo() {
   const db = await getDb();
-  return db.getRepository('AdRequest');
+  return db.getRepository(AdRequest);
 }
 
 export async function getAuditLogRepo() {
   const db = await getDb();
-  return db.getRepository('AuditLog');
+  return db.getRepository(AuditLog);
 }
 
 export async function getPolicyDocumentRepo() {
   const db = await getDb();
-  return db.getRepository('PolicyDocument');
+  return db.getRepository(PolicyDocument);
 }
 
 export async function getPolicyRevisionRepo() {
   const db = await getDb();
-  return db.getRepository('PolicyRevision');
+  return db.getRepository(PolicyRevision);
 }
 
 export async function getChatMessageScheduleRepo() {
   const db = await getDb();
-  return db.getRepository('ChatMessageSchedule');
+  return db.getRepository(ChatMessageSchedule);
 }
 
 export async function getChatMessageSettingsRepo() {
   const db = await getDb();
-  return db.getRepository('ChatMessageSettings');
+  return db.getRepository(ChatMessageSettings);
 }
 
 export async function getChatMessageDirectRepo() {
   const db = await getDb();
-  return db.getRepository('ChatMessageDirect');
+  return db.getRepository(ChatMessageDirect);
 }
 
 export async function getChatEventBatchRepo() {
   const db = await getDb();
-  return db.getRepository('ChatEventBatch');
+  return db.getRepository(ChatEventBatch);
 }
 
 export async function getChatEventRepo() {
   const db = await getDb();
-  return db.getRepository('ChatEvent');
+  return db.getRepository(ChatEvent);
 }
 
 export async function getChatMessageTriggerRuleRepo() {

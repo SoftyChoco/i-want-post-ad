@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    let created: Record<string, unknown> | null = null
+    let created: { id?: number } | null = null
     const db = await getDb()
     await db.transaction(async (manager) => {
       const directRepo = manager.getRepository('ChatMessageDirect')
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
       const log = logRepo.create({
         action: 'create_chat_direct',
         targetType: 'chat_message_direct',
-        targetId: Number((created as { id?: number }).id || 0),
+        targetId: Number(created?.id || 0),
         actorId: actor.userId,
         actorName: actor.name,
         details: JSON.stringify({
