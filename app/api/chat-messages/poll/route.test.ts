@@ -307,7 +307,8 @@ describe('GET /api/chat-messages/poll', () => {
       ]),
     })
     getEventRepoMock.mockResolvedValue({
-      findOne: vi.fn().mockResolvedValue({ id: 101 }),
+      findOne: vi.fn().mockResolvedValue({ id: 200 }),
+      find: vi.fn().mockResolvedValue([{ id: 101 }]),
     })
 
     const manager = {
@@ -327,7 +328,7 @@ describe('GET /api/chat-messages/poll', () => {
 
     expect(response.status).toBe(200)
     await expect(response.json()).resolves.toMatchObject({
-      data: [{ id: 11, scheduleName: '자동응답: 신청안내', messageText: '신청은 /submit 에서 진행해주세요' }],
+      data: [{ id: 101, scheduleName: '자동응답: 신청안내', messageText: '신청은 /submit 에서 진행해주세요' }],
     })
   })
 
@@ -402,6 +403,48 @@ describe('GET /api/chat-messages/poll', () => {
     })
   })
 
+  it('falls back to legacy schedule query when respect_night_block column is missing', async () => {
+    process.env.KAKAO_BOT_TOKEN = 'bot-token'
+
+    const missingColumnError = new Error('SqliteError: no such column: p.respect_night_block')
+    getScheduleRepoMock.mockRejectedValue(missingColumnError)
+    getDirectRepoMock.mockResolvedValue({ find: vi.fn().mockResolvedValue([]) })
+    getTriggerRuleRepoMock.mockResolvedValue({ find: vi.fn().mockResolvedValue([]) })
+    getEventRepoMock.mockResolvedValue({ findOne: vi.fn().mockResolvedValue(null), find: vi.fn().mockResolvedValue([]) })
+
+    const manager = {
+      getRepository: vi.fn(() => ({ save: vi.fn().mockResolvedValue({}) })),
+      query: vi.fn().mockResolvedValue(undefined),
+    }
+    getDbMock.mockResolvedValue({
+      query: vi.fn().mockResolvedValue([
+        {
+          id: 501,
+          scheduleName: '레거시 스케줄',
+          messageText: '레거시 경로 발송',
+          mode: 'interval',
+          intervalMinutes: 1,
+          fixedTime: null,
+          isActive: 1,
+          lastDispatchedAt: '2026-04-02T08:00:00.000Z',
+          createdAt: '2026-04-02T08:00:00.000Z',
+          updatedAt: '2026-04-02T08:00:00.000Z',
+        },
+      ]),
+      transaction: vi.fn(async (cb: any) => cb(manager)),
+    })
+
+    const request = new NextRequest('http://localhost:3000/api/chat-messages/poll', {
+      headers: { authorization: 'Bearer bot-token' },
+    })
+    const response = await GET(request)
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({
+      data: [{ id: 501, scheduleName: '레거시 스케줄', messageText: '레거시 경로 발송' }],
+    })
+  })
+
   it('recovers stale trigger cursor when lastMatchedEventId is ahead of latest event id', async () => {
     process.env.KAKAO_BOT_TOKEN = 'bot-token'
 
@@ -421,12 +464,10 @@ describe('GET /api/chat-messages/poll', () => {
       ]),
     })
 
-    const findOne = vi
-      .fn()
-      .mockResolvedValueOnce({ id: 120 })
-      .mockResolvedValueOnce({ id: 118 })
-
-    getEventRepoMock.mockResolvedValue({ findOne })
+    getEventRepoMock.mockResolvedValue({
+      findOne: vi.fn().mockResolvedValue({ id: 120 }),
+      find: vi.fn().mockResolvedValue([{ id: 118 }]),
+    })
 
     const manager = {
       getRepository: vi.fn((target: string | { name?: string }) => {
@@ -445,7 +486,7 @@ describe('GET /api/chat-messages/poll', () => {
 
     expect(response.status).toBe(200)
     await expect(response.json()).resolves.toMatchObject({
-      data: [{ id: 19, scheduleName: '자동응답: 커서 복구 룰', messageText: '신청은 /submit 참고' }],
+      data: [{ id: 118, scheduleName: '자동응답: 커서 복구 룰', messageText: '신청은 /submit 참고' }],
     })
   })
 
@@ -471,9 +512,11 @@ describe('GET /api/chat-messages/poll', () => {
     })
 
     getEventRepoMock.mockResolvedValue({
-      findOne: vi.fn().mockImplementation(async (args: any) => {
-        if (args?.order?.id === 'DESC') return { id: 2 }
-        return cursor === 0 ? { id: 1 } : cursor === 1 ? { id: 2 } : null
+      findOne: vi.fn().mockResolvedValue({ id: 2 }),
+      find: vi.fn().mockImplementation(async () => {
+        if (cursor === 0) return [{ id: 1 }]
+        if (cursor === 1) return [{ id: 2 }]
+        return []
       }),
     })
 
@@ -498,7 +541,7 @@ describe('GET /api/chat-messages/poll', () => {
     const firstResponse = await GET(firstRequest)
     expect(firstResponse.status).toBe(200)
     await expect(firstResponse.json()).resolves.toMatchObject({
-      data: [{ id: 30, scheduleName: '자동응답: 연속 응답 룰', messageText: '신청 안내 메시지' }],
+      data: [{ id: 1, scheduleName: '자동응답: 연속 응답 룰', messageText: '신청 안내 메시지' }],
     })
 
     const secondRequest = new NextRequest('http://localhost:3000/api/chat-messages/poll', {
@@ -507,7 +550,7 @@ describe('GET /api/chat-messages/poll', () => {
     const secondResponse = await GET(secondRequest)
     expect(secondResponse.status).toBe(200)
     await expect(secondResponse.json()).resolves.toMatchObject({
-      data: [{ id: 30, scheduleName: '자동응답: 연속 응답 룰', messageText: '신청 안내 메시지' }],
+      data: [{ id: 2, scheduleName: '자동응답: 연속 응답 룰', messageText: '신청 안내 메시지' }],
     })
   })
 })
