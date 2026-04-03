@@ -32,40 +32,71 @@ function parseFixedTime(value: string | null): { hour: number; minute: number } 
   return { hour, minute }
 }
 
-function getTodayFixedTimeTarget(now: Date, fixedTime: string): Date | null {
-  const parsed = parseFixedTime(fixedTime)
-  if (!parsed) return null
-
-  const target = new Date(now)
-  target.setHours(parsed.hour, parsed.minute, 0, 0)
-  return target
-}
-
 function parseTimeToMinutes(value: string | null): number | null {
   const parsed = parseFixedTime(value)
   if (!parsed) return null
   return parsed.hour * 60 + parsed.minute
 }
 
-function getKstNowMinutes(now: Date): number {
+function getKstDateParts(now: Date): {
+  year: number
+  month: number
+  day: number
+  hour: number
+  minute: number
+} {
   const parts = new Intl.DateTimeFormat('en-GB', {
     timeZone: 'Asia/Seoul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
     hour12: false,
   }).formatToParts(now)
 
-  const hourPart = parts.find((part) => part.type === 'hour')?.value
-  const minutePart = parts.find((part) => part.type === 'minute')?.value
+  const year = Number(parts.find((part) => part.type === 'year')?.value)
+  const month = Number(parts.find((part) => part.type === 'month')?.value)
+  const day = Number(parts.find((part) => part.type === 'day')?.value)
+  const hour = Number(parts.find((part) => part.type === 'hour')?.value)
+  const minute = Number(parts.find((part) => part.type === 'minute')?.value)
 
-  const hour = Number(hourPart)
-  const minute = Number(minutePart)
-  if (Number.isInteger(hour) && Number.isInteger(minute)) {
-    return hour * 60 + minute
+  if (
+    Number.isInteger(year) &&
+    Number.isInteger(month) &&
+    Number.isInteger(day) &&
+    Number.isInteger(hour) &&
+    Number.isInteger(minute)
+  ) {
+    return { year, month, day, hour, minute }
   }
 
-  const fallbackMinutes = (now.getUTCHours() + 9) % 24
-  return fallbackMinutes * 60 + now.getUTCMinutes()
+  return {
+    year: now.getUTCFullYear(),
+    month: now.getUTCMonth() + 1,
+    day: now.getUTCDate(),
+    hour: (now.getUTCHours() + 9) % 24,
+    minute: now.getUTCMinutes(),
+  }
+}
+
+function getKstDateKey(now: Date): string {
+  const parts = getKstDateParts(now)
+  return `${parts.year}-${String(parts.month).padStart(2, '0')}-${String(parts.day).padStart(2, '0')}`
+}
+
+function getTodayFixedTimeTarget(now: Date, fixedTime: string): Date | null {
+  const parsed = parseFixedTime(fixedTime)
+  if (!parsed) return null
+
+  const kst = getKstDateParts(now)
+  const utcMs = Date.UTC(kst.year, kst.month - 1, kst.day, parsed.hour - 9, parsed.minute, 0, 0)
+  return new Date(utcMs)
+}
+
+function getKstNowMinutes(now: Date): number {
+  const kst = getKstDateParts(now)
+  return kst.hour * 60 + kst.minute
 }
 
 export function isWithinNightBlockWindow(settings: ChatMessageNightWindowSettings, now: Date): boolean {
@@ -98,10 +129,7 @@ export function computeNextRunAt(schedule: ChatMessageSchedule, now: Date = new 
   if (!todayTarget) return null
 
   if (schedule.lastDispatchedAt) {
-    const alreadyDispatchedToday =
-      schedule.lastDispatchedAt.getFullYear() === now.getFullYear() &&
-      schedule.lastDispatchedAt.getMonth() === now.getMonth() &&
-      schedule.lastDispatchedAt.getDate() === now.getDate()
+    const alreadyDispatchedToday = getKstDateKey(schedule.lastDispatchedAt) === getKstDateKey(now)
     if (alreadyDispatchedToday) {
       const tomorrowTarget = new Date(todayTarget)
       tomorrowTarget.setDate(tomorrowTarget.getDate() + 1)
@@ -109,13 +137,7 @@ export function computeNextRunAt(schedule: ChatMessageSchedule, now: Date = new 
     }
   }
 
-  if (todayTarget.getTime() >= now.getTime()) {
-    return todayTarget
-  }
-
-  const nextDay = new Date(todayTarget)
-  nextDay.setDate(nextDay.getDate() + 1)
-  return nextDay
+  return todayTarget
 }
 
 export function isScheduleDue(schedule: ChatMessageSchedule, now: Date = new Date()): boolean {
