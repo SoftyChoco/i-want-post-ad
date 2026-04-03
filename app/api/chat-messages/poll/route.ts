@@ -97,10 +97,19 @@ export async function GET(request: NextRequest) {
     })
 
     if (!isWithinNightBlockWindow(settings, now) && eventRepo) {
+      const latestEvent = await eventRepo.findOne({ order: { id: 'DESC' } }) as ChatEventRow | null
+      const latestEventId = latestEvent?.id ?? null
+
       for (const rule of triggerRules) {
+        const hasStaleCursor =
+          typeof rule.lastMatchedEventId === 'number' &&
+          typeof latestEventId === 'number' &&
+          rule.lastMatchedEventId > latestEventId
+        const effectiveCursor = hasStaleCursor ? null : rule.lastMatchedEventId
+
         const event = await eventRepo.findOne({
           where: {
-            id: rule.lastMatchedEventId ? MoreThan(rule.lastMatchedEventId) : MoreThan(0),
+            id: effectiveCursor ? MoreThan(effectiveCursor) : MoreThan(0),
             ...(rule.authorName ? { authorName: rule.authorName } : {}),
             content: Like(`%${rule.keyword}%`),
           },

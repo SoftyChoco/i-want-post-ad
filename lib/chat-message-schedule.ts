@@ -47,13 +47,34 @@ function parseTimeToMinutes(value: string | null): number | null {
   return parsed.hour * 60 + parsed.minute
 }
 
+function getKstNowMinutes(now: Date): number {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Seoul',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(now)
+
+  const hourPart = parts.find((part) => part.type === 'hour')?.value
+  const minutePart = parts.find((part) => part.type === 'minute')?.value
+
+  const hour = Number(hourPart)
+  const minute = Number(minutePart)
+  if (Number.isInteger(hour) && Number.isInteger(minute)) {
+    return hour * 60 + minute
+  }
+
+  const fallbackMinutes = (now.getUTCHours() + 9) % 24
+  return fallbackMinutes * 60 + now.getUTCMinutes()
+}
+
 export function isWithinNightBlockWindow(settings: ChatMessageNightWindowSettings, now: Date): boolean {
   if (!settings.nightBlockEnabled) return false
   const startMinutes = parseTimeToMinutes(settings.nightStart)
   const endMinutes = parseTimeToMinutes(settings.nightEnd)
   if (startMinutes === null || endMinutes === null) return false
 
-  const nowMinutes = now.getHours() * 60 + now.getMinutes()
+  const nowMinutes = getKstNowMinutes(now)
   if (startMinutes < endMinutes) {
     return nowMinutes >= startMinutes && nowMinutes < endMinutes
   }

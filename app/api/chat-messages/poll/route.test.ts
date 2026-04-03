@@ -401,4 +401,113 @@ describe('GET /api/chat-messages/poll', () => {
       data: [{ id: 88, scheduleName: '직접 메시지', messageText: '스케줄 없이 직접 메시지' }],
     })
   })
+
+  it('recovers stale trigger cursor when lastMatchedEventId is ahead of latest event id', async () => {
+    process.env.KAKAO_BOT_TOKEN = 'bot-token'
+
+    getScheduleRepoMock.mockResolvedValue({ find: vi.fn().mockResolvedValue([]) })
+    getDirectRepoMock.mockResolvedValue({ find: vi.fn().mockResolvedValue([]) })
+    getTriggerRuleRepoMock.mockResolvedValue({
+      find: vi.fn().mockResolvedValue([
+        {
+          id: 19,
+          ruleName: '커서 복구 룰',
+          keyword: '신청',
+          authorName: null,
+          responseText: '신청은 /submit 참고',
+          isActive: true,
+          lastMatchedEventId: 9999,
+        },
+      ]),
+    })
+
+    const findOne = vi
+      .fn()
+      .mockResolvedValueOnce({ id: 120 })
+      .mockResolvedValueOnce({ id: 118 })
+
+    getEventRepoMock.mockResolvedValue({ findOne })
+
+    const manager = {
+      getRepository: vi.fn((target: string | { name?: string }) => {
+        if (target === 'ChatMessageTriggerRule' || (typeof target !== 'string' && target.name === 'ChatMessageTriggerRule')) {
+          return { update: vi.fn().mockResolvedValue({}) }
+        }
+        return { save: vi.fn().mockResolvedValue({}) }
+      }),
+    }
+    getDbMock.mockResolvedValue({ transaction: vi.fn(async (cb: any) => cb(manager)) })
+
+    const request = new NextRequest('http://localhost:3000/api/chat-messages/poll', {
+      headers: { authorization: 'Bearer bot-token' },
+    })
+    const response = await GET(request)
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({
+      data: [{ id: 19, scheduleName: '자동응답: 커서 복구 룰', messageText: '신청은 /submit 참고' }],
+    })
+  })
+
+  it('keeps triggering on new matching events across consecutive polls', async () => {
+    process.env.KAKAO_BOT_TOKEN = 'bot-token'
+
+    let cursor = 0
+
+    getScheduleRepoMock.mockResolvedValue({ find: vi.fn().mockResolvedValue([]) })
+    getDirectRepoMock.mockResolvedValue({ find: vi.fn().mockResolvedValue([]) })
+    getTriggerRuleRepoMock.mockResolvedValue({
+      find: vi.fn().mockImplementation(async () => ([
+        {
+          id: 30,
+          ruleName: '연속 응답 룰',
+          keyword: '신청',
+          authorName: null,
+          responseText: '신청 안내 메시지',
+          isActive: true,
+          lastMatchedEventId: cursor,
+        },
+      ])),
+    })
+
+    getEventRepoMock.mockResolvedValue({
+      findOne: vi.fn().mockImplementation(async (args: any) => {
+        if (args?.order?.id === 'DESC') return { id: 2 }
+        return cursor === 0 ? { id: 1 } : cursor === 1 ? { id: 2 } : null
+      }),
+    })
+
+    const manager = {
+      getRepository: vi.fn((target: string | { name?: string }) => {
+        if (target === 'ChatMessageTriggerRule' || (typeof target !== 'string' && target.name === 'ChatMessageTriggerRule')) {
+          return {
+            update: vi.fn().mockImplementation(async (_where: any, patch: any) => {
+              cursor = patch.lastMatchedEventId
+              return {}
+            }),
+          }
+        }
+        return { save: vi.fn().mockResolvedValue({}) }
+      }),
+    }
+    getDbMock.mockResolvedValue({ transaction: vi.fn(async (cb: any) => cb(manager)) })
+
+    const firstRequest = new NextRequest('http://localhost:3000/api/chat-messages/poll', {
+      headers: { authorization: 'Bearer bot-token' },
+    })
+    const firstResponse = await GET(firstRequest)
+    expect(firstResponse.status).toBe(200)
+    await expect(firstResponse.json()).resolves.toMatchObject({
+      data: [{ id: 30, scheduleName: '자동응답: 연속 응답 룰', messageText: '신청 안내 메시지' }],
+    })
+
+    const secondRequest = new NextRequest('http://localhost:3000/api/chat-messages/poll', {
+      headers: { authorization: 'Bearer bot-token' },
+    })
+    const secondResponse = await GET(secondRequest)
+    expect(secondResponse.status).toBe(200)
+    await expect(secondResponse.json()).resolves.toMatchObject({
+      data: [{ id: 30, scheduleName: '자동응답: 연속 응답 룰', messageText: '신청 안내 메시지' }],
+    })
+  })
 })
