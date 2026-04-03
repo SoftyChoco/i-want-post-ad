@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 
 type ScheduleItem = {
   id: number
@@ -41,7 +40,6 @@ export default function ScheduleManager({
   initialSettings: Settings
   initialTriggerRules: TriggerRuleItem[]
 }) {
-  const router = useRouter()
   const [schedules, setSchedules] = useState<ScheduleItem[]>(initialSchedules)
   const [createLoading, setCreateLoading] = useState(false)
   const [directLoading, setDirectLoading] = useState(false)
@@ -94,7 +92,6 @@ export default function ScheduleManager({
         nightStart: settingsData.data.nightStart || '22:00',
         nightEnd: settingsData.data.nightEnd || '07:00',
       })
-      router.refresh()
       return
     }
     throw new Error(schedulesData.error?.message || settingsData.error?.message || rulesData?.error?.message || '새로고침에 실패했습니다')
