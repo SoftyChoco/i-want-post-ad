@@ -68,10 +68,11 @@ export async function PATCH(
       )
     }
 
+    const hasAuthorNameField = Object.prototype.hasOwnProperty.call(parsed.data, 'authorName')
     const merged = {
       ruleName: parsed.data.ruleName ?? current.ruleName,
       keyword: parsed.data.keyword ?? current.keyword,
-      authorName: parsed.data.authorName ?? current.authorName,
+      authorName: hasAuthorNameField ? (parsed.data.authorName ?? null) : current.authorName,
       responseText: parsed.data.responseText ?? current.responseText,
       isActive: parsed.data.isActive ?? current.isActive,
     }

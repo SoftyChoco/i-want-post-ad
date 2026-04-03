@@ -55,6 +55,39 @@ describe('admin chat message trigger rule detail api', () => {
     expect(response.status).toBe(200)
   })
 
+  it('clears authorName when null is provided', async () => {
+    getRepoMock.mockResolvedValue({
+      findOneBy: vi.fn().mockResolvedValue({
+        id: 8,
+        ruleName: '작성자 조건 룰',
+        keyword: '문의',
+        authorName: '기존닉네임',
+        responseText: '안내',
+        isActive: true,
+      }),
+    })
+
+    const manager = {
+      getRepository: vi.fn(() => ({ create: vi.fn((v) => v) })),
+      save: vi.fn().mockResolvedValue({}),
+    }
+    getDbMock.mockResolvedValue({ transaction: vi.fn(async (cb: any) => cb(manager)) })
+
+    const request = new NextRequest('http://localhost:3000/api/admin/chat-messages/rules/8', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        authorName: null,
+      }),
+    })
+
+    const response = await PATCH(request, { params: Promise.resolve({ id: '8' }) })
+    expect(response.status).toBe(200)
+    expect(manager.save).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'ChatMessageTriggerRule' }),
+      expect.objectContaining({ authorName: null })
+    )
+  })
+
   it('deletes trigger rule and writes audit log', async () => {
     getRepoMock.mockResolvedValue({
       findOneBy: vi.fn().mockResolvedValue({
