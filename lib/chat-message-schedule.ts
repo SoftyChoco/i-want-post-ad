@@ -129,7 +129,9 @@ export function computeNextRunAt(schedule: ChatMessageSchedule, now: Date = new 
   if (!todayTarget) return null
 
   if (schedule.lastDispatchedAt) {
-    const alreadyDispatchedToday = getKstDateKey(schedule.lastDispatchedAt) === getKstDateKey(now)
+    const alreadyDispatchedToday =
+      getKstDateKey(schedule.lastDispatchedAt) === getKstDateKey(now) &&
+      schedule.lastDispatchedAt.getTime() >= todayTarget.getTime()
     if (alreadyDispatchedToday) {
       const tomorrowTarget = new Date(todayTarget)
       tomorrowTarget.setDate(tomorrowTarget.getDate() + 1)

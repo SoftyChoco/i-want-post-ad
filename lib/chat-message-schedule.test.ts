@@ -68,6 +68,19 @@ describe('chat message schedule core logic', () => {
     expect(next?.toISOString()).toBe('2026-04-04T05:10:00.000Z')
   })
 
+  it('still runs today when last dispatch was earlier than today fixed_time', () => {
+    const schedule = makeSchedule({
+      mode: 'fixed_time',
+      fixedTime: '14:10',
+      intervalMinutes: null,
+      lastDispatchedAt: new Date('2026-04-03T01:00:00.000Z'),
+    })
+
+    const next = computeNextRunAt(schedule, new Date('2026-04-03T05:11:00.000Z'))
+    expect(next?.toISOString()).toBe('2026-04-03T05:10:00.000Z')
+    expect(isScheduleDue(schedule, new Date('2026-04-03T05:11:00.000Z'))).toBe(true)
+  })
+
   it('treats fixed_time as due after target time on same KST date when not yet dispatched', () => {
     const schedule = makeSchedule({
       mode: 'fixed_time',
