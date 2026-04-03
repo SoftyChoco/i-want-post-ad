@@ -97,7 +97,10 @@ export async function GET(request: NextRequest) {
     })
 
     if (!isWithinNightBlockWindow(settings, now) && eventRepo) {
-      const latestEvent = await eventRepo.findOne({ order: { id: 'DESC' } }) as ChatEventRow | null
+      const latestEvent = await eventRepo.findOne({
+        where: { id: MoreThan(0) },
+        order: { id: 'DESC' },
+      }) as ChatEventRow | null
       const latestEventId = latestEvent?.id ?? null
 
       for (const rule of triggerRules) {
