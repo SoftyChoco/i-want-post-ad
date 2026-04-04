@@ -748,6 +748,101 @@ export default function ScheduleManager({
 
       {activeTab === 'trigger' && (
       <div className="space-y-4">
+        <section className="bg-white border border-gray-200 rounded-lg p-5 space-y-4">
+          <h3 className="text-base font-semibold text-gray-900">사용자 예외/차단 관리</h3>
+          <form onSubmit={upsertGuardUser} className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">닉네임</label>
+              <input
+                type="text"
+                required
+                value={guardUserForm.authorName}
+                onChange={(e) => setGuardUserForm((prev) => ({ ...prev, authorName: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">사용자 경고 횟수(선택)</label>
+              <input
+                type="number"
+                min={1}
+                value={guardUserForm.customWarnCount}
+                onChange={(e) => setGuardUserForm((prev) => ({ ...prev, customWarnCount: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">사용자 차단 횟수(선택)</label>
+              <input
+                type="number"
+                min={1}
+                value={guardUserForm.customBlockCount}
+                onChange={(e) => setGuardUserForm((prev) => ({ ...prev, customBlockCount: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+              />
+            </div>
+            <label className="flex items-center gap-2 text-sm text-gray-700 pb-2">
+              <input
+                type="checkbox"
+                checked={guardUserForm.isWhitelisted}
+                onChange={(e) => setGuardUserForm((prev) => ({ ...prev, isWhitelisted: e.target.checked }))}
+              />
+              화이트리스트
+            </label>
+            <button type="submit" className="px-3 py-2 bg-emerald-600 text-white rounded text-sm">저장/추가</button>
+          </form>
+
+          <div className="space-y-2">
+            {guardUsers.length === 0 ? (
+              <div className="text-sm text-gray-500">등록된 사용자 예외가 없습니다.</div>
+            ) : guardUsers.map((user) => (
+              <div key={user.id} className="grid grid-cols-1 md:grid-cols-6 gap-2 items-center border border-gray-200 rounded p-3">
+                <div className="text-sm font-medium text-gray-900">{user.authorName}</div>
+                <label className="flex items-center gap-2 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={user.isWhitelisted}
+                    onChange={(e) => setGuardUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, isWhitelisted: e.target.checked } : u)))}
+                  />
+                  화이트리스트
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  value={user.customWarnCount ?? ''}
+                  onChange={(e) => setGuardUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, customWarnCount: e.target.value ? Number(e.target.value) : null } : u)))}
+                  className="px-2 py-1 border border-gray-300 rounded text-sm"
+                  placeholder="경고 횟수"
+                />
+                <input
+                  type="number"
+                  min={1}
+                  value={user.customBlockCount ?? ''}
+                  onChange={(e) => setGuardUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, customBlockCount: e.target.value ? Number(e.target.value) : null } : u)))}
+                  className="px-2 py-1 border border-gray-300 rounded text-sm"
+                  placeholder="차단 횟수"
+                />
+                <label className="flex items-center gap-2 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={user.isBlocked}
+                    onChange={(e) => setGuardUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, isBlocked: e.target.checked } : u)))}
+                  />
+                  차단
+                </label>
+                <button
+                  type="button"
+                  disabled={savingGuardUserId === user.id}
+                  onClick={() => patchGuardUser(user, {})}
+                  className="px-3 py-1.5 bg-gray-900 text-white rounded text-sm disabled:opacity-50"
+                >
+                  {savingGuardUserId === user.id ? '저장중...' : '저장'}
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
+
         <form onSubmit={createTriggerRule} className="bg-white border border-gray-200 rounded-lg p-5 space-y-4">
           <h2 className="text-lg font-semibold text-gray-900">자동응답 룰 생성</h2>
           <p className="text-sm text-gray-600">최신 수집 채팅에서 키워드 또는 작성자+키워드가 일치하면 응답 메시지를 발송합니다.</p>
@@ -942,100 +1037,6 @@ export default function ScheduleManager({
           </div>
         </section>
 
-        <section className="bg-white border border-gray-200 rounded-lg p-5 space-y-4">
-          <h3 className="text-base font-semibold text-gray-900">사용자 예외/차단 관리</h3>
-          <form onSubmit={upsertGuardUser} className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
-            <div>
-              <label className="block text-xs text-gray-600 mb-1">닉네임</label>
-              <input
-                type="text"
-                required
-                value={guardUserForm.authorName}
-                onChange={(e) => setGuardUserForm((prev) => ({ ...prev, authorName: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-gray-600 mb-1">사용자 경고 횟수(선택)</label>
-              <input
-                type="number"
-                min={1}
-                value={guardUserForm.customWarnCount}
-                onChange={(e) => setGuardUserForm((prev) => ({ ...prev, customWarnCount: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-gray-600 mb-1">사용자 차단 횟수(선택)</label>
-              <input
-                type="number"
-                min={1}
-                value={guardUserForm.customBlockCount}
-                onChange={(e) => setGuardUserForm((prev) => ({ ...prev, customBlockCount: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-              />
-            </div>
-            <label className="flex items-center gap-2 text-sm text-gray-700 pb-2">
-              <input
-                type="checkbox"
-                checked={guardUserForm.isWhitelisted}
-                onChange={(e) => setGuardUserForm((prev) => ({ ...prev, isWhitelisted: e.target.checked }))}
-              />
-              화이트리스트
-            </label>
-            <button type="submit" className="px-3 py-2 bg-emerald-600 text-white rounded text-sm">저장/추가</button>
-          </form>
-
-          <div className="space-y-2">
-            {guardUsers.length === 0 ? (
-              <div className="text-sm text-gray-500">등록된 사용자 예외가 없습니다.</div>
-            ) : guardUsers.map((user) => (
-              <div key={user.id} className="grid grid-cols-1 md:grid-cols-6 gap-2 items-center border border-gray-200 rounded p-3">
-                <div className="text-sm font-medium text-gray-900">{user.authorName}</div>
-                <label className="flex items-center gap-2 text-sm text-gray-700">
-                  <input
-                    type="checkbox"
-                    checked={user.isWhitelisted}
-                    onChange={(e) => setGuardUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, isWhitelisted: e.target.checked } : u)))}
-                  />
-                  화이트리스트
-                </label>
-                <input
-                  type="number"
-                  min={1}
-                  value={user.customWarnCount ?? ''}
-                  onChange={(e) => setGuardUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, customWarnCount: e.target.value ? Number(e.target.value) : null } : u)))}
-                  className="px-2 py-1 border border-gray-300 rounded text-sm"
-                  placeholder="경고 횟수"
-                />
-                <input
-                  type="number"
-                  min={1}
-                  value={user.customBlockCount ?? ''}
-                  onChange={(e) => setGuardUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, customBlockCount: e.target.value ? Number(e.target.value) : null } : u)))}
-                  className="px-2 py-1 border border-gray-300 rounded text-sm"
-                  placeholder="차단 횟수"
-                />
-                <label className="flex items-center gap-2 text-sm text-gray-700">
-                  <input
-                    type="checkbox"
-                    checked={user.isBlocked}
-                    onChange={(e) => setGuardUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, isBlocked: e.target.checked } : u)))}
-                  />
-                  차단
-                </label>
-                <button
-                  type="button"
-                  disabled={savingGuardUserId === user.id}
-                  onClick={() => patchGuardUser(user, {})}
-                  className="px-3 py-1.5 bg-gray-900 text-white rounded text-sm disabled:opacity-50"
-                >
-                  {savingGuardUserId === user.id ? '저장중...' : '저장'}
-                </button>
-              </div>
-            ))}
-          </div>
-        </section>
       </div>
       )}
     </div>
