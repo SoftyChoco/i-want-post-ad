@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getActorFromHeaders } from '@/lib/request-actor'
-import { listAutoReplyGuardUsers, updateAutoReplyGuardUserById } from '@/lib/chat-auto-reply-guard'
+import { deleteAutoReplyGuardUserById, listAutoReplyGuardUsers, updateAutoReplyGuardUserById } from '@/lib/chat-auto-reply-guard'
 import { patchAutoReplyGuardUserSchema } from '@/lib/validations'
 import { getDb } from '@/lib/db'
 import { AuditLog } from '@/lib/entities/AuditLog'
@@ -64,6 +64,35 @@ export async function PATCH(
     return NextResponse.json({ data: users })
   } catch (error) {
     console.error('Auto-reply guard user patch error:', error)
+    return NextResponse.json({ error: { code: 'INTERNAL_ERROR', message: '서버 오류가 발생했습니다' } }, { status: 500 })
+  }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const actor = ensureAdminOrModerator(request)
+    if (!actor) {
+      return NextResponse.json({ error: { code: 'FORBIDDEN', message: '권한이 없습니다' } }, { status: 403 })
+    }
+
+    const { id } = await params
+    const userId = parseId(id)
+    if (!userId) {
+      return NextResponse.json({ error: { code: 'VALIDATION_ERROR', message: '유효하지 않은 사용자 ID입니다' } }, { status: 400 })
+    }
+
+    const ok = await deleteAutoReplyGuardUserById(userId)
+    if (!ok) {
+      return NextResponse.json({ error: { code: 'NOT_FOUND', message: '사용자를 찾을 수 없습니다' } }, { status: 404 })
+    }
+
+    const users = await listAutoReplyGuardUsers()
+    return NextResponse.json({ data: users })
+  } catch (error) {
+    console.error('Auto-reply guard user delete error:', error)
     return NextResponse.json({ error: { code: 'INTERNAL_ERROR', message: '서버 오류가 발생했습니다' } }, { status: 500 })
   }
 }

@@ -232,6 +232,27 @@ export default function ScheduleManager({
     }
   }
 
+  async function deleteGuardUser(item: GuardUser) {
+    if (!window.confirm('해당 사용자 예외/차단 정책을 삭제하시겠습니까?')) return
+    setError(null)
+    setNotice(null)
+    setSavingGuardUserId(item.id)
+    try {
+      const res = await fetch(`/api/admin/chat-messages/guard/users/${item.id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error?.message || '사용자 정책 삭제에 실패했습니다')
+      setGuardUsers(data.data)
+      setNotice('사용자 정책을 삭제했습니다.')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '사용자 정책 삭제에 실패했습니다')
+    } finally {
+      setSavingGuardUserId(null)
+    }
+  }
+
   async function saveSettings() {
     setError(null)
     setNotice(null)
@@ -796,7 +817,7 @@ export default function ScheduleManager({
             {guardUsers.length === 0 ? (
               <div className="text-sm text-gray-500">등록된 사용자 예외가 없습니다.</div>
             ) : guardUsers.map((user) => (
-              <div key={user.id} className="grid grid-cols-1 md:grid-cols-6 gap-2 items-center border border-gray-200 rounded p-3">
+              <div key={user.id} className="grid grid-cols-1 md:grid-cols-7 gap-2 items-center border border-gray-200 rounded p-3">
                 <div className="text-sm font-medium text-gray-900">{user.authorName}</div>
                 <label className="flex items-center gap-2 text-sm text-gray-700">
                   <input
@@ -837,6 +858,14 @@ export default function ScheduleManager({
                   className="px-3 py-1.5 bg-gray-900 text-white rounded text-sm disabled:opacity-50"
                 >
                   {savingGuardUserId === user.id ? '저장중...' : '저장'}
+                </button>
+                <button
+                  type="button"
+                  disabled={savingGuardUserId === user.id}
+                  onClick={() => deleteGuardUser(user)}
+                  className="px-3 py-1.5 bg-white text-red-600 border border-red-200 rounded text-sm disabled:opacity-50"
+                >
+                  삭제
                 </button>
               </div>
             ))}

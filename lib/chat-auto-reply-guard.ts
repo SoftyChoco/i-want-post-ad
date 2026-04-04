@@ -175,6 +175,16 @@ export async function updateAutoReplyGuardUserById(
   return true
 }
 
+export async function deleteAutoReplyGuardUserById(id: number) {
+  await ensureAutoReplyGuardTables()
+  const db = await getDb()
+  if (typeof (db as { query?: unknown }).query !== 'function') return false
+  const rows = await db.query('SELECT id FROM chat_auto_reply_guard_users WHERE id = ?', [id]) as Array<{ id: number }>
+  if (!rows[0]) return false
+  await db.query('DELETE FROM chat_auto_reply_guard_users WHERE id = ?', [id])
+  return true
+}
+
 export async function evaluateAndRecordAutoReplyGuard(authorName: string): Promise<{
   blocked: boolean
   message: string | null
