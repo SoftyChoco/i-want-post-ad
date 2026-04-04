@@ -8,6 +8,8 @@ import { IsNull, Like, MoreThan } from 'typeorm'
 import { ChatMessageTriggerRule } from '@/lib/entities/ChatMessageTriggerRule'
 import { ChatMessageSchedule as ChatMessageScheduleEntity } from '@/lib/entities/ChatMessageSchedule'
 import { ChatMessageDirect as ChatMessageDirectEntity } from '@/lib/entities/ChatMessageDirect'
+import { evaluateAndRecordAutoReplyGuard } from '@/lib/chat-auto-reply-guard'
+import { AuditLog } from '@/lib/entities/AuditLog'
 
 type ChatMessageDirectRow = {
   id: number
@@ -27,6 +29,7 @@ type ChatMessageTriggerRuleRow = {
 
 type ChatEventRow = {
   id: number
+  authorName: string
 }
 
 type LegacyScheduleRow = {
@@ -158,6 +161,7 @@ export async function GET(request: NextRequest) {
         order: { id: 'DESC' },
       }) as ChatEventRow | null
       const latestEventId = latestEvent?.id ?? null
+      const guardResultByEventId = new Map<number, Awaited<ReturnType<typeof evaluateAndRecordAutoReplyGuard>>>()
       for (const rule of triggerRules) {
         const hasStaleCursor =
           typeof rule.lastMatchedEventId === 'number' &&
@@ -177,6 +181,34 @@ export async function GET(request: NextRequest) {
         if (events.length === 0) continue
 
         for (const event of events) {
+          const guardResult = guardResultByEventId.has(event.id)
+            ? guardResultByEventId.get(event.id)!
+            : await evaluateAndRecordAutoReplyGuard(event.authorName)
+          guardResultByEventId.set(event.id, guardResult)
+          if (guardResult.blocked && guardResult.message === null) {
+            continue
+          }
+
+          if (guardResult.blocked && guardResult.message) {
+            triggerMessages.push({
+              ruleId: rule.id,
+              scheduleName: `자동응답: ${rule.ruleName}`,
+              messageText: guardResult.message,
+              matchedEventId: event.id,
+            })
+            break
+          }
+
+          if (guardResult.message) {
+            triggerMessages.push({
+              ruleId: rule.id,
+              scheduleName: `자동응답: ${rule.ruleName}`,
+              messageText: guardResult.message,
+              matchedEventId: event.id,
+            })
+            continue
+          }
+
           triggerMessages.push({
             ruleId: rule.id,
             scheduleName: `자동응답: ${rule.ruleName}`,
@@ -212,6 +244,22 @@ export async function GET(request: NextRequest) {
         }
         for (const [ruleId, matchedEventId] of triggerCursorUpdates.entries()) {
           await pendingTriggerRuleRepo.update({ id: ruleId }, { lastMatchedEventId: matchedEventId })
+        }
+
+        const blockedMessageEvents = triggerMessages.filter((m) => m.messageText === '차단되었습니다')
+        if (blockedMessageEvents.length > 0) {
+          const logRepo = manager.getRepository(AuditLog)
+          for (const blocked of blockedMessageEvents) {
+            const log = logRepo.create({
+              action: 'block_auto_reply_user',
+              targetType: 'auto_reply_guard_user',
+              targetId: blocked.matchedEventId,
+              actorId: 0,
+              actorName: 'system',
+              details: JSON.stringify({ eventId: blocked.matchedEventId }),
+            })
+            await logRepo.save(log)
+          }
         }
       })
     }

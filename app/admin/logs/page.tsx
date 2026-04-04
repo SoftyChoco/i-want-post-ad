@@ -30,6 +30,8 @@ const actionBadge: Record<string, { label: string; color: string }> = {
   create_chat_trigger_rule: { label: '자동응답 룰 생성', color: 'bg-emerald-100 text-emerald-800' },
   update_chat_trigger_rule: { label: '자동응답 룰 수정', color: 'bg-teal-100 text-teal-800' },
   delete_chat_trigger_rule: { label: '자동응답 룰 삭제', color: 'bg-amber-100 text-amber-800' },
+  block_auto_reply_user: { label: '자동응답 차단', color: 'bg-red-100 text-red-800' },
+  unblock_auto_reply_user: { label: '자동응답 차단 해제', color: 'bg-green-100 text-green-800' },
 }
 
 export default async function LogsPage({

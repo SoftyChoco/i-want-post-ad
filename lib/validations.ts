@@ -123,3 +123,35 @@ const chatEventSchema = z.object({
 export const createChatEventsBulkSchema = z.object({
   events: z.array(chatEventSchema).min(1, '최소 1건 이상의 이벤트가 필요합니다').max(20, '최대 20건까지 전송할 수 있습니다'),
 })
+
+export const updateAutoReplyGuardSettingsSchema = z.object({
+  windowMinutes: z.number().int().min(1).max(60),
+  warnCount: z.number().int().min(1).max(100),
+  blockCount: z.number().int().min(1).max(100),
+}).superRefine((value, ctx) => {
+  if (value.blockCount < value.warnCount) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['blockCount'], message: '차단 횟수는 경고 횟수보다 크거나 같아야 합니다' })
+  }
+})
+
+export const upsertAutoReplyGuardUserSchema = z.object({
+  authorName: z.string().min(1, '닉네임을 입력해주세요').max(100),
+  isWhitelisted: z.boolean(),
+  customWarnCount: z.number().int().min(1).max(100).nullable().optional(),
+  customBlockCount: z.number().int().min(1).max(100).nullable().optional(),
+}).superRefine((value, ctx) => {
+  const warn = value.customWarnCount
+  const block = value.customBlockCount
+  if (warn !== null && warn !== undefined && block !== null && block !== undefined && block < warn) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['customBlockCount'], message: '차단 횟수는 경고 횟수보다 크거나 같아야 합니다' })
+  }
+})
+
+export const patchAutoReplyGuardUserSchema = z.object({
+  isWhitelisted: z.boolean().optional(),
+  customWarnCount: z.number().int().min(1).max(100).nullable().optional(),
+  customBlockCount: z.number().int().min(1).max(100).nullable().optional(),
+  isBlocked: z.boolean().optional(),
+}).refine((value) => Object.keys(value).length > 0, {
+  message: '최소 한 개 이상의 수정 필드가 필요합니다',
+})

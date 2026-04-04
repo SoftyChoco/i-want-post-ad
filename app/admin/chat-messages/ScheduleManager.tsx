@@ -30,6 +30,21 @@ type TriggerRuleItem = {
   lastMatchedEventId: number | null
 }
 
+type GuardSettings = {
+  windowMinutes: number
+  warnCount: number
+  blockCount: number
+}
+
+type GuardUser = {
+  id: number
+  authorName: string
+  isWhitelisted: boolean
+  customWarnCount: number | null
+  customBlockCount: number | null
+  isBlocked: boolean
+}
+
 type TabKey = 'direct' | 'schedule' | 'trigger' | 'night'
 
 function parseTab(value: string | null): TabKey {
@@ -58,6 +73,8 @@ export default function ScheduleManager({
   const [settingsSaving, setSettingsSaving] = useState(false)
   const [savingScheduleId, setSavingScheduleId] = useState<number | null>(null)
   const [savingRuleId, setSavingRuleId] = useState<number | null>(null)
+  const [savingGuardUserId, setSavingGuardUserId] = useState<number | null>(null)
+  const [savingGuardSettings, setSavingGuardSettings] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [settings, setSettings] = useState<Settings>({
@@ -83,6 +100,18 @@ export default function ScheduleManager({
     responseText: '',
     isActive: true,
   })
+  const [guardSettings, setGuardSettings] = useState<GuardSettings>({
+    windowMinutes: 3,
+    warnCount: 3,
+    blockCount: 5,
+  })
+  const [guardUsers, setGuardUsers] = useState<GuardUser[]>([])
+  const [guardUserForm, setGuardUserForm] = useState({
+    authorName: '',
+    isWhitelisted: false,
+    customWarnCount: '',
+    customBlockCount: '',
+  })
 
   const activeTab = parseTab(searchParams.get('tab'))
 
@@ -93,14 +122,18 @@ export default function ScheduleManager({
   }
 
   async function refreshSchedules() {
-    const [schedulesRes, settingsRes, rulesRes] = await Promise.all([
+    const [schedulesRes, settingsRes, rulesRes, guardSettingsRes, guardUsersRes] = await Promise.all([
       fetch('/api/admin/chat-messages', { credentials: 'include' }),
       fetch('/api/admin/chat-messages/settings', { credentials: 'include' }),
       fetch('/api/admin/chat-messages/rules', { credentials: 'include' }),
+      fetch('/api/admin/chat-messages/guard/settings', { credentials: 'include' }),
+      fetch('/api/admin/chat-messages/guard/users', { credentials: 'include' }),
     ])
     const schedulesData = await schedulesRes.json()
     const settingsData = await settingsRes.json()
     const rulesData = await rulesRes.json()
+    const guardSettingsData = await guardSettingsRes.json()
+    const guardUsersData = await guardUsersRes.json()
     const isRuleFeatureUnavailable = rulesRes.status === 503 && rulesData?.error?.code === 'FEATURE_UNAVAILABLE'
     if (schedulesRes.ok && settingsRes.ok && (rulesRes.ok || isRuleFeatureUnavailable)) {
       setSchedules(schedulesData.data)
@@ -110,9 +143,93 @@ export default function ScheduleManager({
         nightStart: settingsData.data.nightStart || '22:00',
         nightEnd: settingsData.data.nightEnd || '07:00',
       })
+      if (guardSettingsRes.ok) {
+        setGuardSettings(guardSettingsData.data)
+      }
+      if (guardUsersRes.ok) {
+        setGuardUsers(guardUsersData.data)
+      }
       return
     }
-    throw new Error(schedulesData.error?.message || settingsData.error?.message || rulesData?.error?.message || '새로고침에 실패했습니다')
+    throw new Error(
+      schedulesData.error?.message || settingsData.error?.message || rulesData?.error?.message || guardSettingsData?.error?.message || guardUsersData?.error?.message || '새로고침에 실패했습니다'
+    )
+  }
+
+  async function saveGuardSettings() {
+    setError(null)
+    setNotice(null)
+    setSavingGuardSettings(true)
+    try {
+      const res = await fetch('/api/admin/chat-messages/guard/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(guardSettings),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error?.message || '요청 제한 설정 저장에 실패했습니다')
+      await refreshSchedules()
+      setNotice('요청 제한 설정을 저장했습니다.')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '요청 제한 설정 저장에 실패했습니다')
+    } finally {
+      setSavingGuardSettings(false)
+    }
+  }
+
+  async function upsertGuardUser(e: React.FormEvent) {
+    e.preventDefault()
+    setError(null)
+    setNotice(null)
+    try {
+      const res = await fetch('/api/admin/chat-messages/guard/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          authorName: guardUserForm.authorName,
+          isWhitelisted: guardUserForm.isWhitelisted,
+          customWarnCount: guardUserForm.customWarnCount ? Number(guardUserForm.customWarnCount) : null,
+          customBlockCount: guardUserForm.customBlockCount ? Number(guardUserForm.customBlockCount) : null,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error?.message || '사용자 예외 저장에 실패했습니다')
+      setGuardUsers(data.data)
+      setGuardUserForm({ authorName: '', isWhitelisted: false, customWarnCount: '', customBlockCount: '' })
+      setNotice('사용자 예외를 저장했습니다.')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '사용자 예외 저장에 실패했습니다')
+    }
+  }
+
+  async function patchGuardUser(item: GuardUser, patch: Partial<GuardUser>) {
+    setError(null)
+    setNotice(null)
+    setSavingGuardUserId(item.id)
+    try {
+      const next = { ...item, ...patch }
+      const res = await fetch(`/api/admin/chat-messages/guard/users/${item.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          isWhitelisted: next.isWhitelisted,
+          customWarnCount: next.customWarnCount,
+          customBlockCount: next.customBlockCount,
+          isBlocked: next.isBlocked,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error?.message || '사용자 정책 저장에 실패했습니다')
+      setGuardUsers(data.data)
+      setNotice('사용자 정책을 저장했습니다.')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '사용자 정책 저장에 실패했습니다')
+    } finally {
+      setSavingGuardUserId(null)
+    }
   }
 
   async function saveSettings() {
@@ -777,6 +894,148 @@ export default function ScheduleManager({
             </section>
           ))}
         </div>
+
+        <section className="bg-white border border-gray-200 rounded-lg p-5 space-y-4">
+          <h3 className="text-base font-semibold text-gray-900">요청 제한 정책</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">집계 시간(분)</label>
+              <input
+                type="number"
+                min={1}
+                value={guardSettings.windowMinutes}
+                onChange={(e) => setGuardSettings((prev) => ({ ...prev, windowMinutes: Number(e.target.value || 1) }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">경고 횟수</label>
+              <input
+                type="number"
+                min={1}
+                value={guardSettings.warnCount}
+                onChange={(e) => setGuardSettings((prev) => ({ ...prev, warnCount: Number(e.target.value || 1) }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">차단 횟수</label>
+              <input
+                type="number"
+                min={1}
+                value={guardSettings.blockCount}
+                onChange={(e) => setGuardSettings((prev) => ({ ...prev, blockCount: Number(e.target.value || 1) }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+              />
+            </div>
+          </div>
+          <div className="text-xs text-gray-500">경고 문구: 너무 잦은 호출 시 차단됩니다 / 차단 문구: 차단되었습니다</div>
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={saveGuardSettings}
+              disabled={savingGuardSettings}
+              className="px-3 py-1.5 bg-gray-900 text-white rounded text-sm disabled:opacity-50"
+            >
+              {savingGuardSettings ? '저장중...' : '요청 제한 저장'}
+            </button>
+          </div>
+        </section>
+
+        <section className="bg-white border border-gray-200 rounded-lg p-5 space-y-4">
+          <h3 className="text-base font-semibold text-gray-900">사용자 예외/차단 관리</h3>
+          <form onSubmit={upsertGuardUser} className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">닉네임</label>
+              <input
+                type="text"
+                required
+                value={guardUserForm.authorName}
+                onChange={(e) => setGuardUserForm((prev) => ({ ...prev, authorName: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">사용자 경고 횟수(선택)</label>
+              <input
+                type="number"
+                min={1}
+                value={guardUserForm.customWarnCount}
+                onChange={(e) => setGuardUserForm((prev) => ({ ...prev, customWarnCount: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">사용자 차단 횟수(선택)</label>
+              <input
+                type="number"
+                min={1}
+                value={guardUserForm.customBlockCount}
+                onChange={(e) => setGuardUserForm((prev) => ({ ...prev, customBlockCount: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+              />
+            </div>
+            <label className="flex items-center gap-2 text-sm text-gray-700 pb-2">
+              <input
+                type="checkbox"
+                checked={guardUserForm.isWhitelisted}
+                onChange={(e) => setGuardUserForm((prev) => ({ ...prev, isWhitelisted: e.target.checked }))}
+              />
+              화이트리스트
+            </label>
+            <button type="submit" className="px-3 py-2 bg-emerald-600 text-white rounded text-sm">저장/추가</button>
+          </form>
+
+          <div className="space-y-2">
+            {guardUsers.length === 0 ? (
+              <div className="text-sm text-gray-500">등록된 사용자 예외가 없습니다.</div>
+            ) : guardUsers.map((user) => (
+              <div key={user.id} className="grid grid-cols-1 md:grid-cols-6 gap-2 items-center border border-gray-200 rounded p-3">
+                <div className="text-sm font-medium text-gray-900">{user.authorName}</div>
+                <label className="flex items-center gap-2 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={user.isWhitelisted}
+                    onChange={(e) => setGuardUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, isWhitelisted: e.target.checked } : u)))}
+                  />
+                  화이트리스트
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  value={user.customWarnCount ?? ''}
+                  onChange={(e) => setGuardUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, customWarnCount: e.target.value ? Number(e.target.value) : null } : u)))}
+                  className="px-2 py-1 border border-gray-300 rounded text-sm"
+                  placeholder="경고 횟수"
+                />
+                <input
+                  type="number"
+                  min={1}
+                  value={user.customBlockCount ?? ''}
+                  onChange={(e) => setGuardUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, customBlockCount: e.target.value ? Number(e.target.value) : null } : u)))}
+                  className="px-2 py-1 border border-gray-300 rounded text-sm"
+                  placeholder="차단 횟수"
+                />
+                <label className="flex items-center gap-2 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={user.isBlocked}
+                    onChange={(e) => setGuardUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, isBlocked: e.target.checked } : u)))}
+                  />
+                  차단
+                </label>
+                <button
+                  type="button"
+                  disabled={savingGuardUserId === user.id}
+                  onClick={() => patchGuardUser(user, {})}
+                  className="px-3 py-1.5 bg-gray-900 text-white rounded text-sm disabled:opacity-50"
+                >
+                  {savingGuardUserId === user.id ? '저장중...' : '저장'}
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
       </div>
       )}
     </div>
