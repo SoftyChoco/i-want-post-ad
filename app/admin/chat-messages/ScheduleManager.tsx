@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 
 type ScheduleItem = {
   id: number
@@ -31,6 +32,13 @@ type TriggerRuleItem = {
 
 type TabKey = 'direct' | 'schedule' | 'trigger' | 'night'
 
+function parseTab(value: string | null): TabKey {
+  if (value === 'direct' || value === 'schedule' || value === 'trigger' || value === 'night') {
+    return value
+  }
+  return 'direct'
+}
+
 export default function ScheduleManager({
   initialSchedules,
   initialSettings,
@@ -40,6 +48,9 @@ export default function ScheduleManager({
   initialSettings: Settings
   initialTriggerRules: TriggerRuleItem[]
 }) {
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   const [schedules, setSchedules] = useState<ScheduleItem[]>(initialSchedules)
   const [createLoading, setCreateLoading] = useState(false)
   const [directLoading, setDirectLoading] = useState(false)
@@ -47,7 +58,6 @@ export default function ScheduleManager({
   const [settingsSaving, setSettingsSaving] = useState(false)
   const [savingScheduleId, setSavingScheduleId] = useState<number | null>(null)
   const [savingRuleId, setSavingRuleId] = useState<number | null>(null)
-  const [activeTab, setActiveTab] = useState<TabKey>('direct')
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [settings, setSettings] = useState<Settings>({
@@ -73,6 +83,14 @@ export default function ScheduleManager({
     responseText: '',
     isActive: true,
   })
+
+  const activeTab = parseTab(searchParams.get('tab'))
+
+  function moveTab(tab: TabKey) {
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('tab', tab)
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false })
+  }
 
   async function refreshSchedules() {
     const [schedulesRes, settingsRes, rulesRes] = await Promise.all([
@@ -315,7 +333,7 @@ export default function ScheduleManager({
       <div className="flex gap-2 border-b border-gray-200">
         <button
           type="button"
-          onClick={() => setActiveTab('direct')}
+          onClick={() => moveTab('direct')}
           className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
             activeTab === 'direct' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'
           }`}
@@ -324,7 +342,7 @@ export default function ScheduleManager({
         </button>
         <button
           type="button"
-          onClick={() => setActiveTab('schedule')}
+          onClick={() => moveTab('schedule')}
           className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
             activeTab === 'schedule' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
           }`}
@@ -333,7 +351,7 @@ export default function ScheduleManager({
         </button>
         <button
           type="button"
-          onClick={() => setActiveTab('night')}
+          onClick={() => moveTab('night')}
           className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
             activeTab === 'night' ? 'border-gray-700 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-700'
           }`}
@@ -342,7 +360,7 @@ export default function ScheduleManager({
         </button>
         <button
           type="button"
-          onClick={() => setActiveTab('trigger')}
+          onClick={() => moveTab('trigger')}
           className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
             activeTab === 'trigger' ? 'border-emerald-500 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-700'
           }`}
