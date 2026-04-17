@@ -1,5 +1,4 @@
 import 'reflect-metadata';
-import path from 'path';
 import { DataSource } from 'typeorm';
 import { User } from './entities/User';
 import { AdRequest } from './entities/AdRequest';
@@ -12,15 +11,18 @@ import { ChatMessageDirect } from './entities/ChatMessageDirect';
 import { ChatEventBatch } from './entities/ChatEventBatch';
 import { ChatEvent } from './entities/ChatEvent';
 import { ChatMessageTriggerRule } from './entities/ChatMessageTriggerRule';
-import { mkdirSync } from 'fs';
+import { ensureSqliteDatabaseDir, resolveProjectRoot, resolveSqliteDatabasePath } from './database-path';
 
-mkdirSync(path.resolve(process.cwd(), 'data'), { recursive: true });
+const projectRoot = resolveProjectRoot();
+const databasePath = resolveSqliteDatabasePath(process.env.DATABASE_URL, projectRoot);
+
+ensureSqliteDatabaseDir(databasePath);
 
 declare global { var __db__: DataSource | undefined }
 
 const AppDataSource = globalThis.__db__ || new DataSource({
   type: 'better-sqlite3',
-  database: process.env.DATABASE_URL || path.resolve(process.cwd(), 'data', 'db.sqlite'),
+  database: databasePath,
   entities: [
     User,
     AdRequest,

@@ -1,13 +1,16 @@
 import 'reflect-metadata';
-import path from 'path';
 import { loadEnvConfig } from '@next/env';
 import { DataSource } from 'typeorm';
+import { ensureSqliteDatabaseDir, resolveProjectRoot, resolveSqliteDatabasePath } from './lib/database-path';
 
-loadEnvConfig(process.cwd());
+const projectRoot = resolveProjectRoot();
+loadEnvConfig(projectRoot);
+const databasePath = resolveSqliteDatabasePath(process.env.DATABASE_URL, projectRoot);
+ensureSqliteDatabaseDir(databasePath);
 
 export default new DataSource({
   type: 'better-sqlite3',
-  database: process.env.DATABASE_URL || path.resolve(process.cwd(), 'data', 'db.sqlite'),
+  database: databasePath,
   entities: ['lib/entities/**/*.{ts,js}'],
   migrations: ['migrations/**/*.ts'],
   synchronize: false,

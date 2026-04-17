@@ -1,9 +1,15 @@
 export function getExternalApiToken(): string {
-  return process.env.KAKAO_BOT_TOKEN || ''
+  return (process.env.KAKAO_BOT_TOKEN || '').trim()
 }
 
 export function hasValidExternalApiToken(authHeader: string | null): boolean {
   const token = getExternalApiToken()
   if (!token) return false
-  return (authHeader || '') === `Bearer ${token}`
+
+  const rawHeader = (authHeader || '').trim()
+  const match = /^Bearer\s+(.+)$/i.exec(rawHeader)
+  if (!match) return false
+
+  const requestToken = match[1]?.trim() || ''
+  return requestToken === token
 }

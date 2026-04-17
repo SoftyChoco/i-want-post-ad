@@ -13,13 +13,20 @@ function isUniqueIdempotencyError(error: unknown): boolean {
 export async function POST(request: NextRequest) {
   const externalToken = getExternalApiToken()
   if (!externalToken) {
+    console.error('Chat events bulk rejected: KAKAO_BOT_TOKEN is not configured')
     return NextResponse.json(
       { error: { code: 'MISCONFIGURED', message: 'KAKAO_BOT_TOKEN is not configured' } },
       { status: 500 }
     )
   }
 
-  if (!hasValidExternalApiToken(request.headers.get('authorization'))) {
+  const authHeader = request.headers.get('authorization')
+  if (!hasValidExternalApiToken(authHeader)) {
+    const authScheme = (authHeader || '').trim().split(/\s+/, 1)[0] || ''
+    console.warn('Chat events bulk rejected: invalid external API token', {
+      hasAuthorizationHeader: Boolean(authHeader),
+      authorizationScheme: authScheme,
+    })
     return NextResponse.json(
       { error: { code: 'FORBIDDEN', message: 'Invalid external API token' } },
       { status: 403 }
@@ -28,6 +35,7 @@ export async function POST(request: NextRequest) {
 
   const idempotencyKey = request.headers.get('idempotency-key')?.trim() || ''
   if (!idempotencyKey) {
+    console.warn('Chat events bulk rejected: missing Idempotency-Key header')
     return NextResponse.json(
       { error: { code: 'VALIDATION_ERROR', message: 'Idempotency-Key 헤더가 필요합니다' } },
       { status: 400 }
@@ -37,6 +45,9 @@ export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => null)
   const parsed = createChatEventsBulkSchema.safeParse(body)
   if (!parsed.success) {
+    console.warn('Chat events bulk rejected: body validation failed', {
+      issue: parsed.error.issues[0]?.message || '입력값이 올바르지 않습니다',
+    })
     return NextResponse.json(
       {
         error: {
