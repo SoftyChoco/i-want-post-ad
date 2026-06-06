@@ -96,14 +96,14 @@ cp .env.example .env
 DATABASE_URL=./data/db.sqlite
 JWT_SECRET=your-jwt-secret-change-in-production-min-32-chars
 GEMINI_API_KEY=your-gemini-api-key
-GEMINI_MODEL=gemini-3.1-flash-lite-preview
+GEMINI_MODEL=gemini-3.5-flash
 ADMIN_EMAIL=admin@example.com
 ADMIN_PASSWORD=your-secure-password
 ```
 
 > `JWT_SECRET`은 최소 32자 이상의 랜덤 문자열을 사용하세요.
 > `GEMINI_API_KEY`는 [Google AI Studio](https://aistudio.google.com/)에서 발급받을 수 있습니다.
-> `GEMINI_MODEL`은 프로젝트에서 사용할 모델명입니다. (예: `gemini-3.1-flash-lite-preview`)
+> `GEMINI_MODEL`은 프로젝트에서 사용할 모델명입니다. (예: `gemini-3.5-flash`)
 
 ### 3. 데이터베이스 초기화
 

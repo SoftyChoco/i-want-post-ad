@@ -1,11 +1,26 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { getPolicyContent } from './policy'
 
+const DEFAULT_GEMINI_MODEL = 'gemini-3.5-flash'
+const RETIRED_GEMINI_MODELS = new Set([
+  'gemini-3.1-flash-lite-preview',
+  'models/gemini-3.1-flash-lite-preview',
+])
+
 export interface LLMJudgment {
   verdict: 'compliant' | 'non_compliant' | 'needs_review' | 'error'
   reason: string
   ruleIds: string[]
   suggestion?: string
+}
+
+function resolveGeminiModelName(configuredModel: string | undefined): string {
+  const modelName = configuredModel?.trim()
+  if (!modelName || RETIRED_GEMINI_MODELS.has(modelName)) {
+    return DEFAULT_GEMINI_MODEL
+  }
+
+  return modelName
 }
 
 function normalizeContentType(contentType: string): string {
@@ -27,7 +42,7 @@ export async function judgeAdContent(input: {
 }): Promise<LLMJudgment> {
   try {
     const apiKey = process.env.GEMINI_API_KEY
-    const modelName = process.env.GEMINI_MODEL?.trim() || 'gemini-3.1-flash-lite-preview'
+    const modelName = resolveGeminiModelName(process.env.GEMINI_MODEL)
     if (!apiKey || apiKey === 'your-gemini-api-key') {
       return { verdict: 'error', reason: 'GEMINI_API_KEY가 설정되지 않았습니다', ruleIds: [] }
     }
